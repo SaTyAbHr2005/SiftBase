@@ -18,15 +18,34 @@ The API has exactly two routes:
 | Area | Status |
 |---|---|
 | Ingestion, indexing, collections | Working. 35 PDFs / 6,970 pages took 18.1 min on a 16-thread PC |
-| Query pipeline | Working with fake providers. **Not yet run against a live free model** |
-| Model providers | Free-tier fallback chain built. Needs your keys in `.env` |
-| Offline tests | 308 passed, 1 skipped, 7 slow deselected |
-| Accuracy target (0.95) | **Not met.** Needs re-measuring on free models |
-| Latency target (30 s) | **Not met** on analytical queries in past runs (43 to 106 s) |
+| Query pipeline | Working on free models. 8-question baseline measured (below) |
+| Model providers | Free-tier fallback chain working. Keys go in `.env` |
+| Offline tests | 311 passed, 1 skipped, 7 slow deselected |
+| Accuracy target (0.95) | **Not met.** Baseline means: answer 53% / 22%, context 50% / 53% |
+| Latency target (30 s) | **Not met** on longer questions. Baseline median 31 s, worst 163 s |
 
-### Last measured scores
+### Free-model baseline (2026-10-31)
 
-These came from the previous paid model (Qwen3.8 Flash, judged by GLM 5.3 Flash), before the changes in this version. They won't carry over to free models.
+All 35 training documents, the 30 s deadline, answers almost all from Cloudflare's Qwen3 30B, and judged by Groq `gpt-oss-120b` with the unmodified evaluator. Median 12.5 calls, 58,000 tokens and 31 s per query. These are development questions, and C31's 200% is how the official formula treats more relevant chunks than the benchmark has.
+
+| Case | Answer P / R | Context P / R | Query time | Calls |
+|---|---|---|---|---|
+| A20 | 75% / 5% | 88% / 12% | 21 s | 11 |
+| A21 | 0% / 0% | 62% / 41% | 41 s | 20 |
+| B30 | 0% / 25% | 20% / 33% | 10 s | 8 |
+| C17 | 0% / 0% | 46% / 50% | 163 s | 14 |
+| C18 | 86% / 25% | 69% / 63% | 45 s | 19 |
+| C26 | 67% / 13% | 20% / 28% | 54 s | 15 |
+| C31 | 100% / 100% | 100% / 200% | 10 s | 4 |
+| C32 | 100% / 11% | 0% / 0% | 18 s | 11 |
+
+**Main finding:** answers are far too short. They contain 1 to 8 points where benchmark answers have up to 55, even when many verified passages were available, so recall is the biggest problem. C17's writer failed outright and returned no answer.
+
+**Judges matter:** smaller free judges gave contradictory verdicts on these same answers, so only compare runs with the same `judge_models`.
+
+### Earlier scores on the old paid model
+
+These used Qwen3.8 Flash judged by GLM 5.3 Flash, so they aren't directly comparable.
 
 | Case | Answer P / R | Context P / R | Query time |
 |---|---|---|---|
@@ -123,7 +142,7 @@ Design notes: [METADATA_RETRIEVAL.md](METADATA_RETRIEVAL.md) covers document nav
 
 ## Known risks
 
-- **Not tested live:** the chain's endpoints, default models and thinking settings come from provider docs. `scripts/check_llm.py` is the first check.
+- **Free limits:** Gemini allows only 20 requests a day on this account, and Mistral's limits vary by model. `scripts/check_llm.py` tests each key.
 - **Mixed models:** one answer can use several models, so quality may vary between queries. The judge uses one model, and scores should only be compared between runs with the same `judge_models`.
 - **Old indexes:** collections built before this version have no source-confirmed years, so their year checks stay off until they are re-indexed.
 - **Langfuse cost:** each model call may be recorded twice (`kb/llm.py` and the query tracing both log usage). Not confirmed.
@@ -133,10 +152,9 @@ Design notes: [METADATA_RETRIEVAL.md](METADATA_RETRIEVAL.md) covers document nav
 
 ## Next steps
 
-1. **Add keys and run `scripts/check_llm.py`,** then fix any endpoint or model problems it shows.
-2. **Re-index and measure a baseline** on a fixed set: B30, C17, C18, C26, C32 and the unseen-document cases. Free limits mean this takes several days of daily allowance.
-3. **Test each call reduction against that baseline,** and drop any that lowers accuracy.
-4. **Work on precision.** C18's low precision with many kept passages on the right pages points at the writing step.
-5. **Add production basics:** authentication, rate limits and a Docker setup.
-6. **Write `DESIGN.md` and build the frontend.**
-7. **Remove unused code:** duplicate types in `kb/models.py`, `write_answer`, `StepTrace`, `kb/query/demo_app.py`. The ledger writer (`kb/query/ledger.py`) is optional and measured worse.
+1. **Fix the writing step:** find why answers are so short and why C17's writer failed, then re-measure against the baseline above.
+2. **Test each call reduction against that baseline,** and drop any that lowers accuracy.
+3. **Improve retrieval on the weakest cases,** such as C26 and C32.
+4. **Add production basics:** authentication, rate limits and a Docker setup.
+5. **Write `DESIGN.md` and build the frontend.**
+6. **Remove unused code:** duplicate types in `kb/models.py`, `write_answer`, `StepTrace`, `kb/query/demo_app.py`. The ledger writer (`kb/query/ledger.py`) is optional and measured worse.
