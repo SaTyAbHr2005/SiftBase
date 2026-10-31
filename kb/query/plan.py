@@ -149,6 +149,14 @@ def plan_query(llm, query, cards, settings, *, ctx=None):
                      compile_tasks(query,aspects,raw.get("tasks")))
 
 
+def matching_siblings(card, cards, years):
+    """Other versions of this document, read from their own text, that have a requested year."""
+    group=field(card,"sibling_group")
+    if not group:
+        return []
+    return [get(c,"doc_id") for c in cards if field(c,"sibling_group")==group and confirmed(c,"period_year") and field(c,"period_year") in years]
+
+
 def guard_routing(plan, query, cards, store, settings):
     by_id={get(c,"doc_id"):c for c in cards}
     hints=query_hints(query,cards)
@@ -163,8 +171,14 @@ def guard_routing(plan, query, cards, store, settings):
     for doc_id in list(selected):
         card=by_id[doc_id]
         year=field(card,"period_year")
-        if hints["years"] and confirmed(card,"period_year") and year not in hints["years"]:
+        # A year in a question often names events inside a source, so a different-year document is only ruled out
+        # when another version of the same document actually has the requested year.
+        siblings=matching_siblings(card,cards,hints["years"]) if hints["years"] and confirmed(card,"period_year") and year not in hints["years"] else []
+        if siblings:
             selected.remove(doc_id); excluded.append({"doc_id":doc_id,"reason":"confirmed period mismatch"})
+            for sibling in siblings:
+                if sibling not in selected:
+                    selected.append(sibling); added.append(sibling)
         elif requested_identifiers and confirmed(card,"identifiers"):
             identifiers=field(card,"identifiers",[]) or []
             if not any(normalize(q)==normalize(i) for q in requested_identifiers for i in identifiers):

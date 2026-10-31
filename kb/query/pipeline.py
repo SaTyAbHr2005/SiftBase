@@ -89,7 +89,8 @@ def answer_query(collection,query,*,store,generation_id,settings,llm,embedder=No
                 else:
                     pool,lexical,page_report=candidate_pages(store,plan,query,embedder,settings)
                     blocked={x["doc_id"] for x in guard.get("excluded",[])}
-                    escape=[(d,p) for d,p in escape_pages(store,plan,query,embedder,settings) if d not in blocked]
+                    # Other documents are searched only when routing could not settle on a source.
+                    escape=[(d,p) for d,p in escape_pages(store,plan,query,embedder,settings) if d not in blocked] if guard["global_escape"] else []
                     report=page_report
                     out.update(report,escape_pages=escape)
                     counts["candidate_pages"]=report["total"]
@@ -151,7 +152,7 @@ def answer_query(collection,query,*,store,generation_id,settings,llm,embedder=No
                 current_stage=7
                 # Writer and claim check each resend the portfolio; cap it to half of what the input budget has left.
                 left=value(settings,"max_input_tokens")-ctx.estimated_input
-                portfolio,report=select_portfolio(evidence,plan,settings,cap=max(0,left//2-8000))
+                portfolio,report=select_portfolio(evidence,plan,settings,cap=max(0,left//2-8000),query=query)
                 numbered=number_evidence(portfolio)
                 if report["omitted"]:
                     limits.append(f"{report['omitted']} verified fragments omitted from writer context")

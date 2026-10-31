@@ -219,7 +219,7 @@ def _embed(embedder: Embedder, texts: list[str]) -> np.ndarray:
 
 def index_collection(zip_path: Path, collection_name: str, *, settings: Settings, llm: LLM, embedder: Embedder,
                      use_ocr: bool = True, registry: Registry | None = None) -> dict:
-    if not COLLECTION_RE.match(collection_name or ""):
+    if not COLLECTION_RE.fullmatch(collection_name or ""):
         raise KBError("INVALID_COLLECTION_NAME", "collection_name must match ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$", 422,
                       details={"collection_name": (collection_name or "")[:100]})
     registry = registry or Registry(settings)

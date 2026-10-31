@@ -60,7 +60,7 @@ class QueryRuntime:
         start = time.monotonic()
         output = {}
         try:
-            self.check(name)
+            # Stages never abort on the clock: each model call checks it, so a late query keeps what it already found.
             with self.sink.span(name, input=plain(inputs)) as span:
                 yield output
                 output["duration_ms"] = round((time.monotonic()-start)*1000, 3)
@@ -158,6 +158,9 @@ class QueryRuntime:
         try:
             return self._run(job, llm)
         except Exception as exc:
+            # A call cut off by the query's own deadline is a budget stop, not a provider failure.
+            if job["name"] not in FINAL and time.monotonic() >= self.deadline:
+                return BudgetExceeded("Query deadline exhausted")
             return exc
 
     def _run(self, job, llm):
@@ -211,7 +214,7 @@ class QueryRuntime:
                     self._charge(failed_usage)
                     if isinstance(failed_usage.get("output_tokens"),int):
                         self._pool(name, failed_usage["output_tokens"]-max_tokens)
-                elif not charged:
+                elif not charged and time.monotonic() < self.deadline:
                     self.unknown_usage = self.unknown_cost = True
             raise
         finally:

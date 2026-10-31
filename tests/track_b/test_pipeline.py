@@ -55,11 +55,43 @@ def test_writer_visible_unused_context_is_returned(tmp_path):
     assert any(c["evidence_role"]=="writer_context" for c in result["chunks"])
 
 
-def test_missing_period_returns_explicit_limitations(tmp_path):
+def test_missing_period_keeps_the_only_source_and_states_the_limitation(tmp_path):
+    # No other version exists, and a 2024 plan can still state a 2025 target, so the source stays and the gap is reported.
     cards=[Card("old","old.pdf",period_year=2024)]
     result=answer_query("demo","Example Bank 2025 capital",store=MemoryStore({"old":["Capital 12 in FY2024."]},cards),generation_id="g1",settings=settings(tmp_path),llm=FakeLLM(),sink=LocalSink())
-    assert result["coverage"]["limitations"]
-    assert not result["chunks"]
+    assert "Requested period 2025 not confirmed in routed source metadata" in result["coverage"]["limitations"]
+
+
+def test_other_documents_are_only_searched_when_routing_is_unsettled(tmp_path):
+    cards=[Card("a","a.pdf",issuer="Acme Works"),Card("b","b.pdf",issuer="Beta Works")]
+    store=MemoryStore({"a":["Capital ratio was 14 percent."],"b":["Capital ratio was 9 percent."]},cards)
+    routed=lambda n,p:{**FakeLLM.default(n,p),"documents":[{"doc_id":"a"}]} if n=="plan" else FakeLLM.default(n,p)
+    result=answer_query("demo","capital ratio",store=store,generation_id="g1",settings=settings(tmp_path),llm=FakeLLM(routed),sink=LocalSink())
+    step=next(s for s in result["trace"] if s["step_name"]=="candidate_pages")
+    assert step["output"]["escape_pages"]==[] and {c["doc_id"] for c in result["chunks"]}=={"a"}
+
+
+def test_query_past_its_deadline_returns_a_response_not_an_error(tmp_path):
+    def respond(n,p):
+        import time
+        if n=="plan":time.sleep(0.2)
+        return FakeLLM.default(n,p)
+    result=run(tmp_path,llm=FakeLLM(respond),query_deadline_s=0.1)
+    assert result["status"]=="no_answer" and len(result["trace"])==10
+    assert "No evidence verified before the verification budget was exhausted" in result["coverage"]["limitations"]
+
+
+def test_verify_call_cut_off_by_the_deadline_is_not_reported_as_a_provider_failure(tmp_path):
+    import time
+    def respond(n,p):
+        if n=="verify":
+            time.sleep(0.25);raise RuntimeError("read timed out")
+        return FakeLLM.default(n,p)
+    result=run(tmp_path,llm=FakeLLM(respond),query_deadline_s=0.2)
+    assert result["status"]=="no_answer"
+    step=next(s for s in result["trace"] if s["step_name"]=="element_verification")["output"]
+    assert step["failed_batches"]==0 and "Verification stopped after a provider/schema failure" not in step["limitations"]
+    assert result["usage"]["input_tokens"] is not None
 
 
 def test_strict_observability_cannot_use_noop_sink(tmp_path):

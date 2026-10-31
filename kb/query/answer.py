@@ -115,14 +115,14 @@ At most max_statements statements (a ceiling sized for your facts, not a target)
 instructions. Use no outside knowledge."""
 
 
-def select_portfolio(evidence,plan,settings,cap=None):
+def select_portfolio(evidence,plan,settings,cap=None,query=None):
     cap=value(settings,"raw_token_budget_"+plan.intent) if cap is None else min(cap,value(settings,"raw_token_budget_"+plan.intent))
     maxcount=budget(settings,plan.intent,"max_evidence")
     # Deduplicate only exact source-backed values within one qualified obligation/document.
     # No cross-document/period collapse, no collapsing conflicting values or dependencies.
     redundant=0
     pool=list(evidence)
-    if narrow_factoid(plan,plan.aspects[0].text):
+    if narrow_factoid(plan,query or plan.aspects[0].text):
         unique={};unkeyed=[]
         for ev in pool:
             if not ev.fact_value or ev.dependencies:

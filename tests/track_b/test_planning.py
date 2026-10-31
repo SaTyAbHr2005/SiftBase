@@ -17,7 +17,7 @@ def test_preserves_explicit_comparison_scopes(tmp_path):
 
 
 def test_confirmed_wrong_period_cannot_reenter_route(tmp_path):
-    cards=[Card("old","old.pdf",period_year=2024),Card("new","new.pdf",period_year=2025)]
+    cards=[Card("old","old.pdf",period_year=2024,sibling_group="example"),Card("new","new.pdf",period_year=2025,sibling_group="example")]
     store=MemoryStore({c.doc_id:["Example Bank capital ratio"] for c in cards},cards)
     plan=QueryPlan("analytical",[Aspect("a1","capital ratio",["capital"])],["old","new"])
     guarded,report=guard_routing(plan,"Example Bank 2025 capital ratio",cards,store,settings(tmp_path))
@@ -88,3 +88,47 @@ def test_a_prose_period_containing_the_year_needs_no_extra_obligation(tmp_path):
            "period":"December 2017 / 1 January 2025"}],"documents":[{"doc_id":"bcbs"}]}
     plan=plan_query(FakeLLM(lambda n,p:reply),"Basel Committee December 2017 output floor from 1 January 2025?",[card],settings(tmp_path))
     assert len(plan.aspects)==1
+
+
+def test_requested_version_is_added_when_the_planner_only_picked_another(tmp_path):
+    cards=[Card("old","old.pdf",period_year=2024,sibling_group="guide"),Card("new","new.pdf",period_year=2025,sibling_group="guide")]
+    store=MemoryStore({c.doc_id:["installation steps"] for c in cards},cards)
+    plan=QueryPlan("analytical",[Aspect("a1","installation",["install"])],["old"])
+    guarded,report=guard_routing(plan,"Guide 2025 installation steps",cards,store,settings(tmp_path))
+    assert guarded.doc_ids==["new"] and report["excluded"][0]["doc_id"]=="old" and report["added_by_entity"]==["new"]
+
+
+def test_a_year_about_events_does_not_rule_out_an_unrelated_document(tmp_path):
+    # A 2023 history of the 2020 flood is still a valid source for a question about 2020.
+    cards=[Card("history","history.pdf",period_year=2023),Card("other","other.pdf",period_year=2021)]
+    store=MemoryStore({c.doc_id:["flood response"] for c in cards},cards)
+    plan=QueryPlan("analytical",[Aspect("a1","flood",["flood"])],["history"])
+    guarded,report=guard_routing(plan,"What happened in the 2020 flood?",cards,store,settings(tmp_path))
+    assert guarded.doc_ids==["history"] and report["excluded"]==[]
+
+
+def test_a_guessed_year_never_rules_out_a_document(tmp_path):
+    cards=[Card("old","old.pdf",period_year=2024,sibling_group="guide",metadata_provenance={}),Card("new","new.pdf",period_year=2025,sibling_group="guide")]
+    store=MemoryStore({c.doc_id:["steps"] for c in cards},cards)
+    plan=QueryPlan("analytical",[Aspect("a1","steps",["steps"])],["old","new"])
+    guarded,_=guard_routing(plan,"Guide 2025 steps",cards,store,settings(tmp_path))
+    assert guarded.doc_ids==["old","new"]
+
+
+def test_routing_guard_works_on_real_document_cards(tmp_path):
+    from kb.models import DocCard
+    def real(doc_id,year):
+        return DocCard(doc_id,doc_id+".pdf",doc_id,"manual","Acme",[],str(year),year,None,"",[],"",10,[],"acme",{},{"period_year":"source","identifiers":"source"})
+    cards=[real("v1",2024),real("v2",2025)]
+    store=MemoryStore({c.doc_id:["pump settings"] for c in cards},cards)
+    plan=QueryPlan("analytical",[Aspect("a1","pump",["pump"])],["v1","v2"])
+    guarded,report=guard_routing(plan,"Pump settings in 2025",cards,store,settings(tmp_path))
+    assert guarded.doc_ids==["v2"] and report["excluded"][0]["doc_id"]=="v1"
+
+
+def test_identifiers_from_any_field_are_recognised(tmp_path):
+    cards=[Card("a","a.pdf",identifiers=["RFC 9110"]),Card("b","b.pdf",identifiers=["RFC 9112"])]
+    store=MemoryStore({c.doc_id:["http semantics"] for c in cards},cards)
+    plan=QueryPlan("analytical",[Aspect("a1","http",["http"])],["a","b"])
+    guarded,_=guard_routing(plan,"What does RFC 9110 say about status codes?",cards,store,settings(tmp_path))
+    assert guarded.doc_ids==["a"]

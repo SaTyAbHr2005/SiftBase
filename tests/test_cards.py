@@ -132,3 +132,16 @@ def test_extractive_page_cards_need_no_llm(settings):
     assert cards[0].summary.startswith("Gross NPA ratio rose") and cards[0].section == "Asset quality"
     assert cards[1].summary == "(blank or image-only page)"
     assert any("4,053.90" in f for f in cards[2].figures) and "Alpha Bank Limited" in cards[0].entities
+
+
+def test_period_year_is_only_source_confirmed_when_the_document_shows_it(settings):
+    from kb.llm import FakeLLM, LLMError
+    from kb.ingest.cards import build_doc_card
+    doc = _doc(["Pump manual, edition 2025. Installation and maintenance steps for the X100 pump."])
+    def reply(year):
+        return FakeLLM(lambda n, s, u: {"title": "Manual", "doc_type": "manual", "period_year": year}, settings)
+    assert build_doc_card(reply(2025), doc, settings).metadata_provenance["period_year"] == "source"
+    assert "period_year" not in build_doc_card(reply(1999), doc, settings).metadata_provenance
+    def fail(n, s, u):
+        raise LLMError("down")
+    assert "period_year" not in build_doc_card(FakeLLM(fail, settings), doc, settings).metadata_provenance

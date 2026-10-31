@@ -201,3 +201,11 @@ def test_judge_runs_the_chain_in_reverse_and_reuses_saved_verdicts(tmp_path, mon
     assert judge.call_structured("s", "u", max_tokens=512) == {"points": ["a"]}
     assert judge.call_structured("s", "u", max_tokens=512) == {"points": ["a"]}
     assert calls == [B.url] and judge.models == {"b:model-b"} and judge.log[1]["cached"]
+
+
+def test_a_collection_name_with_a_trailing_newline_is_refused(tmp_path):
+    from kb.errors import KBError
+    from kb.ingest.pipeline import index_collection
+    settings = get_settings(data_dir=tmp_path)
+    with pytest.raises(KBError, match="collection_name"):
+        index_collection(tmp_path / "none.zip", "name\n", settings=settings, llm=None, embedder=None)

@@ -206,6 +206,7 @@ class ChainLLM(LLM):
         if s.budget_usd is not None and spent_usd(s) >= s.budget_usd:
             raise LLMError(f"{name}: spend cap KB_BUDGET_USD={s.budget_usd} reached ({spent_usd(s):.4f} USD recorded)")
         from kb.model_api import fit_output
+        self.last_usage={"input_tokens":0,"output_tokens":0,"cost_usd":0.0}  # a rejected request used nothing
         estimate = (len(system) + len(user)) // 4
         usable = [(p, fit_output(p, estimate, max_tokens)) for p in s.providers]
         usable = [(p, limit) for p, limit in usable if limit is not None]

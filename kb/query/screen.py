@@ -398,6 +398,8 @@ def verify_elements(llm,store,plan,query,middle,settings,*,ctx=None,_allow_task_
              'status':'minimum_met' if len(task_evidence[task['id']])>=minimum else 'incomplete'}
             for task in plan.tasks
             for minimum in [2 if task.get('operation') in ('compare','reconcile','assess') else 1]]
+    if kept and NO_EVIDENCE_LIMIT in report["limitations"]:  # a recovery pass found nothing, but evidence was kept
+        report["limitations"].remove(NO_EVIDENCE_LIMIT)
     if report["omitted_fragments"] and not kept and not report["failed_batches"]:
         # Budget stop is not provider failure: answer no_answer (HTTP 200) with the limitation, not a 504.
         report["limitations"].append(NO_EVIDENCE_LIMIT)
