@@ -80,7 +80,7 @@ def evaluate_file(run_path,notebook=None,expected_hash=EXPECTED_EVALUATOR_SHA256
 class OfficialJudgeTransport:
     """Send official judge prompts to one free model without changing official metric logic.
 
-    One model only (KB_JUDGE_PROVIDERS, default Gemini): scores from different judges are not comparable, so a rate
+    One model only (KB_JUDGE_PROVIDERS, default Mistral: Gemini allows only 20 free requests a day): scores from different judges are not comparable, so a rate
     limit waits and a judge that stays down leaves the row unscored rather than switching model."""
     def __init__(self,attempts=6,wait_s=65):
         import os
@@ -89,7 +89,7 @@ class OfficialJudgeTransport:
         from kb.llm import ChainLLM
         from kb.model_api import build_providers
         settings=get_settings()
-        providers=build_providers({**os.environ,"KB_LLM_PROVIDERS":os.getenv("KB_JUDGE_PROVIDERS","gemini")})[:1] or settings.providers[-1:]
+        providers=build_providers({**os.environ,"KB_LLM_PROVIDERS":os.getenv("KB_JUDGE_PROVIDERS","mistral:ministral-14b-latest")})[:1] or settings.providers[-1:]
         self.log=[];self.models=set();self.attempts,self.wait_s=attempts,wait_s
         self.cache=settings.ledger_path().parent/"judge_cache"
         self.client=ChainLLM(replace(settings,providers=providers,llm_cache=False,llm_max_retries=1))

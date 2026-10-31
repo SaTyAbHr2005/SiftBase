@@ -193,7 +193,7 @@ def test_thinking_text_is_removed_from_replies():
 
 def _judge(tmp_path, monkeypatch, **kw):
     from evaluation.official import OfficialJudgeTransport
-    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    monkeypatch.setenv("MISTRAL_API_KEY", "m")
     monkeypatch.setattr("kb.config.get_settings", lambda: get_settings(data_dir=tmp_path))
     return OfficialJudgeTransport(wait_s=0, **kw)
 
@@ -205,7 +205,7 @@ def test_judge_uses_one_model_and_reuses_saved_verdicts(tmp_path, monkeypatch, p
     replies[url] = Reply(content='{"points": ["a"]}')
     assert judge.call_structured("s", "u", max_tokens=512) == {"points": ["a"]}
     assert judge.call_structured("s", "u", max_tokens=512) == {"points": ["a"]}
-    assert calls == [url] and judge.models == {"gemini:gemini-3.5-flash"} and judge.log[1]["cached"]
+    assert calls == [url] and judge.models == {"mistral:ministral-14b-latest"} and judge.log[1]["cached"]
 
 
 def test_judge_waits_out_a_rate_limit_and_never_switches_model(tmp_path, monkeypatch, post):
