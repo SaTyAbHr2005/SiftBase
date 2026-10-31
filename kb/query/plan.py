@@ -166,6 +166,10 @@ def guard_routing(plan, query, cards, store, settings):
     for doc_id in hints["named_docs"]:
         if doc_id not in selected:
             selected.append(doc_id); added.append(doc_id)
+    # A question naming a source is about that source, unless it compares it with something else.
+    if hints["named_docs"] and not hints["comparison"]:
+        for doc_id in [d for d in selected if d not in hints["named_docs"]]:
+            selected.remove(doc_id); excluded.append({"doc_id":doc_id,"reason":"not the source named in the query"})
     requested_identifiers=identifiers_in(query)
     normalize=lambda x: re.sub(r"\W","",x).lower()
     for doc_id in list(selected):
