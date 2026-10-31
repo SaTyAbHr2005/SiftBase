@@ -18,5 +18,9 @@ artifacts/
 
 .venv*/
 
-docs/
+docs/*
+!docs/PROJECT.md
+!docs/DEPLOY.md
+!docs/METADATA_RETRIEVAL.md
+!docs/TASK_WORKSHEET.md
 major_issues.md

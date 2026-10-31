@@ -4,6 +4,8 @@ A smart knowledge base for AI agents that goes beyond top-k RAG. The API exposes
 
 No 0.95 accuracy result or production readiness is claimed.
 
+**Read [the project guide](docs/PROJECT.md) first** for the code structure, current status, known bugs and next steps. `/query` needs a new model provider before it can answer.
+
 ## Setup
 
 Python 3.12 is verified locally; the pinned RapidOCR package requires Python below 3.13. Use an isolated environment and install the shared requirements:
