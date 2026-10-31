@@ -23,9 +23,9 @@ Create `.env` and add a key for at least one free provider, plus your Langfuse c
 | Groq | `GROQ_API_KEY` | `openai/gpt-oss-120b`, then `openai/gpt-oss-20b` |
 | OpenRouter | `OPENROUTER_API_KEY` | `openrouter/free` |
 | Mistral | `MISTRAL_API_KEY` | `mistral-small-latest` |
-| Gemini | `GEMINI_API_KEY` | `gemini-2.5-flash` |
+| Gemini | `GEMINI_API_KEY` | `gemini-3.5-flash` |
 
-Each call tries the providers in that order and moves on after a rate limit, outage, bad key or invalid reply. Providers without a key are skipped. To change the order or models, set `KB_LLM_PROVIDERS`, for example `groq,gemini:gemini-2.5-flash-lite`. Mistral and Gemini free tiers can use your content for training, so leave them out for private documents. `python scripts/check_llm.py` makes one small call to each provider to test your keys.
+Each call tries the providers in that order and moves on after a rate limit, outage, bad key or invalid reply. Providers without a key are skipped. To change the order or models, set `KB_LLM_PROVIDERS`, for example `groq,gemini:gemini-3.5-flash-lite`. Mistral and Gemini free tiers can use your content for training, so leave them out for private documents. `python scripts/check_llm.py` makes one small call to each provider to test your keys.
 
 ```bash
 .venv/bin/python -m scripts.serve --env-file .env --host 127.0.0.1 --port 8000

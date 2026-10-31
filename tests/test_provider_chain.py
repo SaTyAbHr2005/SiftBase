@@ -163,7 +163,7 @@ def test_no_provider_is_a_clear_error(tmp_path):
 def test_build_providers_keeps_order_and_skips_missing_keys():
     env = {"KB_LLM_PROVIDERS": "cloudflare,groq,groq:openai/gpt-oss-20b,gemini", "GROQ_API_KEY": "g", "GEMINI_API_KEY": "m",
            "CLOUDFLARE_API_TOKEN": "c"}  # no account ID, so Cloudflare is left out
-    assert [p.label for p in build_providers(env)] == ["groq:openai/gpt-oss-120b", "groq:openai/gpt-oss-20b", "gemini:gemini-2.5-flash"]
+    assert [p.label for p in build_providers(env)] == ["groq:openai/gpt-oss-120b", "groq:openai/gpt-oss-20b", "gemini:gemini-3.5-flash"]
     env["CLOUDFLARE_ACCOUNT_ID"] = "acct"
     first = build_providers(env)[0]
     assert first.name == "cloudflare" and "/accounts/acct/" in first.url and first.key == "c"

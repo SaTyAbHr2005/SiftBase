@@ -13,7 +13,7 @@ CATALOG = {
     "openrouter": ("https://openrouter.ai/api/v1/chat/completions", "OPENROUTER_API_KEY", "openrouter/free", None),
     "mistral": ("https://api.mistral.ai/v1/chat/completions", "MISTRAL_API_KEY", "mistral-small-latest", None),
     "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "GEMINI_API_KEY",
-               "gemini-2.5-flash", None),
+               "gemini-3.5-flash", None),
 }
 
 
