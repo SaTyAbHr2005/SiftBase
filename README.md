@@ -1,11 +1,8 @@
-# Smart Knowledge Base
+# SiftBase
 
-For the current failures, measured benchmark evidence, reproduction steps and next-agent repair checklist, read [major_issues.md](major_issues.md).
+A smart knowledge base for AI agents that goes beyond top-k RAG. The API exposes exactly POST /index and POST /query. The query path has ten stages, exact source fragments, coverage limitations, structured claim verification, and separate Langfuse observations.
 
-
-Person 1's ingestion track and Person 2's bounded query/evaluation track are integrated. The API exposes exactly POST /index and POST /query. The query path has ten stages, exact source fragments, coverage limitations, structured claim verification, and separate Langfuse observations.
-
-Start with [Track B handoff](docs/TRACK_B_HANDOFF.md) for implementation status and teammate integration notes. [Unified final plan](docs/unified-plan/README.md) reconciles the original architecture and audit; it specifies the target design, including compiler work that is not yet implemented. The original docs remain as legacy references. No 0.95 accuracy result or production readiness is claimed.
+No 0.95 accuracy result or production readiness is claimed.
 
 ## Setup
 
@@ -16,7 +13,7 @@ python3.12 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-Copy `.env.example` to `.env` and configure the organizer OpenCode key/model and Langfuse credentials locally. Never commit `.env`. OPENCODE_MODEL is also mapped to the shared LLM_MODEL by the launch script. The base URL is configurable; the example follows the supplied evaluator and is not a claim of live model availability. Set both PRICE fields: when `KB_BUDGET_USD` is set and a price is blank, every model call is refused, because the spend cap could not be enforced. See [the credit plan](docs/CREDIT_PLAN.md).
+Copy `.env.example` to `.env` and configure the OpenCode key/model and Langfuse credentials locally. Never commit `.env`. OPENCODE_MODEL is also mapped to the shared LLM_MODEL by the launch script. The base URL is configurable; the example follows the supplied evaluator and is not a claim of live model availability. Set both PRICE fields: when `KB_BUDGET_USD` is set and a price is blank, every model call is refused, because the spend cap could not be enforced.
 
 ```bash
 .venv/bin/python -m scripts.serve --env-file .env --host 127.0.0.1 --port 8000
@@ -30,9 +27,7 @@ Local indexing through the existing CLI:
 .venv/bin/python -m scripts.index_local --src /path/to/documents --collection demo
 ```
 
-That CLI reads process environment variables; the server launcher loads `.env`. For offline benchmark capture, use the commands in the handoff. The source dataset remains external to the repository.
-
-Source-derived metadata routing, index/contents mapping, zero-model-cost upgrades and validation limits: [Metadata retrieval](docs/METADATA_RETRIEVAL.md).
+That CLI reads process environment variables; the server launcher loads `.env`. The source dataset remains external to the repository.
 
 ## Validation
 
@@ -43,8 +38,7 @@ Source-derived metadata routing, index/contents mapping, zero-model-cost upgrade
 .venv/bin/python -m scripts.check_langfuse --env-file .env
 ```
 
-The default suite uses synthetic model replies, while PDF/SQLite/collection integration uses real adapters. Explicit slow model checks load pretrained weights and can download them. Langfuse connectivity is a separate explicit live check; it emits no fake inference usage. Full-corpus ingestion, live OpenCode answer quality, official dev/holdout scores and provided-server deployment remain to be measured. See the handoff for remaining ingestion compliance work before submission.
-
+The default suite uses synthetic model replies, while PDF/SQLite/collection integration uses real adapters. Explicit slow model checks load pretrained weights and can download them. Langfuse connectivity is a separate explicit live check; it emits no fake inference usage.
 
 ### Current low-cost inference profile
 
@@ -54,22 +48,4 @@ Page selection now uses the initial source FTS/vector rankings and per-obligatio
 
 BGE-small embeddings, MiniLM cross-encoder reranking, SQLite FTS5, extractive page cards, citation validation and arithmetic already run locally. No additional generative local model is required for these steps. Final-stage token reservations include both answer generation and claim verification, using the same model limits as actual calls.
 
-A live Qwen source-span smoke returned HTTP 200, text blocks only, 484 input / 77 output tokens, $0.00010879 reported-token/catalog cost, and 3.36 seconds. This is transport/evidence-selection validation, not a full analytical benchmark or an accuracy claim. See `docs/QWEN_LOCAL_INFERENCE.md` for the shipped scope and remaining validation.
-
-Latest source-selection benchmark and remaining limitations: [extractive writer report](docs/diagnostics/qwen-extractive/REPORT.md). The official evaluator remains unchanged.
-
-Latest analytical routing/coverage repair and measured limits: [repair benchmark](docs/diagnostics/coverage-repair/REPORT.md).
-
-Experimental relational findings and guarded synthesis: [ledger trial](docs/diagnostics/ledger-trial/REPORT.md). Opt in with `KB_ANALYTICAL_WRITER=ledger`; the source-ID ledger remains opt-in. The current serving environment defaults to `synthesis`; bare `QuerySettings()` remains extractive.
-
-Latest **full-pipeline ledger benchmark**: [report](docs/diagnostics/ledger-full/REPORT.md). Analytical recall regressed; ledger remains off by default.
-
-Ledger source-ID repair: [implementation and zero-cost replay](docs/SOURCE_ID_LEDGER_FIX.md). Integrated mode removes the separate extraction call. [Fresh benchmark](docs/diagnostics/source-id-full/REPORT.md): zero source-ID rejections, 74.19s analytical latency; answer quality remains unresolved and judge matching is contradictory.
-
-Latest team update and evidence-integrity repairs: [implementation, offline evidence and remaining limits](docs/diagnostics/post-merge-integrity/IMPLEMENTATION.md). The source-ID ledger reports above describe historical modes/runs; use the new report for current synthesis behavior.
-
-GLM 5.3 Flash judging and post-merge fixes: [measured results, subsequent offline changes and cost accounting](docs/diagnostics/post-merge-integrity/REPORT.md). Configure the judge independently with `OPENCODE_JUDGE_MODEL`; the answer model stays Qwen.
-
-First-pass tests on three previously unbenchmarked documents: [four query results and per-document metrics](docs/diagnostics/three-unseen/REPORT.md). Generalization remains weak; no runtime changes or score-driven reruns were made.
-
-Next iteration proposal: [task-driven evidence worksheet, paired checks and bounded recovery](docs/next-iteration/PLAN.md). This is a design blueprint incorporating the latest audit, not an implemented accuracy gain.
+The current serving environment defaults to the `synthesis` writer; bare `QuerySettings()` remains extractive, and `KB_ANALYTICAL_WRITER=ledger` is opt-in. Configure the judge independently with `OPENCODE_JUDGE_MODEL`.

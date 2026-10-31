@@ -1,6 +1,6 @@
 """M2: split parsed pages into paragraph/table elements and flag repeated boilerplate.
 
-Per page: blocks -> clean-up -> merge -> split -> ids (docs/PLAN.md, M2).
+Per page: blocks -> clean-up -> merge -> split -> ids.
 """
 import re
 from collections import defaultdict

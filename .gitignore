@@ -17,3 +17,6 @@ artifacts/
 *.log
 
 .venv*/
+
+docs/
+major_issues.md

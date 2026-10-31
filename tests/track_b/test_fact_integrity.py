@@ -1,4 +1,4 @@
-"""Regression cases for failures found after the teammate synthesis merge."""
+"""Regression cases for failures found after the synthesis merge."""
 from dataclasses import replace
 from kb.query.facts import states, inventory, trim_secondary, is_fact, select_facts
 from kb.query.answer import (source_spans, generate_answer, verify_answer, _restore_facts,
