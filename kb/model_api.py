@@ -1,37 +1,78 @@
-"""Provider wire format. Every paid call is qwen3.8-flash on OpenCode's Messages endpoint, thinking disabled."""
-from urllib.parse import urlsplit, urlunsplit
+"""Provider wire format and the free-tier fallback order. Every provider takes the same OpenAI-style request."""
+import re
+from dataclasses import dataclass, field
 
-# Team rule: one model, never with thinking. Any other model is refused here, the single wire-format door
-# shared by ingestion, queries and the evaluator judge.
-REQUIRED_MODEL = "qwen3.8-flash"
+DEFAULT_CHAIN = "cloudflare,groq,groq:openai/gpt-oss-20b,openrouter,mistral,gemini"
+THINK = re.compile(r"<think>.*?</think>", re.S)
+
+# name -> (chat completions URL, key variable, default model, tokens one call may use in a minute)
+CATALOG = {
+    "cloudflare": ("https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1/chat/completions",
+                   "CLOUDFLARE_API_TOKEN", "@cf/qwen/qwen3-30b-a3b-fp8", None),
+    "groq": ("https://api.groq.com/openai/v1/chat/completions", "GROQ_API_KEY", "openai/gpt-oss-120b", 7500),
+    "openrouter": ("https://openrouter.ai/api/v1/chat/completions", "OPENROUTER_API_KEY", "openrouter/free", None),
+    "mistral": ("https://api.mistral.ai/v1/chat/completions", "MISTRAL_API_KEY", "mistral-small-latest", None),
+    "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "GEMINI_API_KEY",
+               "gemini-2.5-flash", None),
+}
 
 
-def is_qwen_no_thinking(model):
-    return model == REQUIRED_MODEL
+@dataclass(frozen=True)
+class Provider:
+    name: str
+    url: str
+    model: str
+    key: str = field(default="", repr=False)
+    max_total: int | None = None
+    max_output: int = 8192
+
+    @property
+    def label(self):
+        return f"{self.name}:{self.model}"
 
 
-def request_spec(base_url, model, system, user, max_tokens, json_mode=True):
-    if model != REQUIRED_MODEL:
-        raise ValueError(f"model {model!r} refused: only {REQUIRED_MODEL} (thinking disabled) may be called")
-    parts=urlsplit(base_url)
-    if parts.hostname == "opencode.ai":
-        base_url=urlunsplit((parts.scheme,parts.netloc,"/inference/anthropic/v1/messages","",""))
-    headers={"anthropic-version":"2023-06-01"}
-    payload={"model":model,"system":system+("\nReturn only a valid JSON object." if json_mode else ""),
-             "messages":[{"role":"user","content":user}],"temperature":0,
-             "max_tokens":max_tokens,"thinking":{"type":"disabled"}}
-    return base_url,headers,payload
+def build_providers(env):
+    """KB_LLM_PROVIDERS entries are `name` or `name:model`. Entries without their key are left out of the chain."""
+    out = []
+    for entry in env.get("KB_LLM_PROVIDERS", DEFAULT_CHAIN).split(","):
+        name, _, model = entry.strip().partition(":")
+        if not name:
+            continue
+        if name not in CATALOG:
+            raise ValueError(f"unknown provider {name!r} in KB_LLM_PROVIDERS: use {sorted(CATALOG)}")
+        url, key_name, default_model, max_total = CATALOG[name]
+        needed = re.findall(r"{(\w+)}", url)
+        if not env.get(key_name) or not all(env.get(n) for n in needed):
+            continue
+        out.append(Provider(name, url.format(**{n: env[n] for n in needed}), model or default_model, env[key_name],
+                            max_total))
+    return tuple(out)
+
+
+def fit_output(provider, input_estimate, max_tokens):
+    """The output limit to send, or None when this call cannot fit the provider's limits."""
+    limit = min(max_tokens, provider.max_output)
+    if provider.max_total is not None:
+        limit = min(limit, provider.max_total - input_estimate)
+    return limit if limit >= min(max_tokens, 256) else None
+
+
+def request_spec(provider, system, user, max_tokens, json_mode=True):
+    model = provider.model.lower()
+    system += "\nReturn only a valid JSON object." if json_mode else ""
+    if "qwen3" in model:
+        system += "\n/no_think"
+    payload = {"model": provider.model, "temperature": 0, "max_tokens": max_tokens,
+               "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+    if "gpt-oss" in model:
+        payload["reasoning_effort"] = "low"
+    return provider.url, {"Authorization": f"Bearer {provider.key}", "Content-Type": "application/json"}, payload
 
 
 def response_parts(body):
-    usage=body.get("usage") or {}
-    if "choices" in body:
-        choice=body["choices"][0]
-        return (choice.get("message",{}).get("content"),choice.get("finish_reason"),
-                usage.get("prompt_tokens"),usage.get("completion_tokens"))
-    content="".join(b.get("text","") for b in body.get("content",[]) if b.get("type")=="text")
-    # Messages input_tokens excludes cache reads/writes; count all input conservatively.
-    inputs=usage.get("input_tokens")
-    if isinstance(inputs,int):
-        inputs+=int(usage.get("cache_read_input_tokens") or 0)+int(usage.get("cache_creation_input_tokens") or 0)
-    return content,body.get("stop_reason"),inputs,usage.get("output_tokens")
+    usage = body.get("usage") or {}
+    choice = body["choices"][0]
+    content = choice.get("message", {}).get("content")
+    if isinstance(content, str):
+        content = THINK.sub("", content).strip()
+    return content, choice.get("finish_reason"), usage.get("prompt_tokens"), usage.get("completion_tokens")

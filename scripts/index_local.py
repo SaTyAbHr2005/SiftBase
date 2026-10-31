@@ -30,12 +30,8 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
 
     settings = get_settings()
-    if not settings.opencode_api_key and settings.llm_mode != "dryrun":
-        from kb.opencode_auth import CLIAuthError, cli_headers
-        try:
-            cli_headers()  # no key: use the logged-in opencode CLI
-        except CLIAuthError as exc:
-            sys.exit(f"{exc} (or set OPENCODE_API_KEY; KB_LLM_MODE=dryrun runs at $0)")
+    if not settings.providers and settings.llm_mode != "dryrun":
+        sys.exit("No provider key found: add one to .env (see .env.example); KB_LLM_MODE=dryrun runs without one")
     src = Path(args.src)
     with tempfile.TemporaryDirectory() as tmp:
         if src.is_dir():

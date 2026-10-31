@@ -6,7 +6,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Cost-aware defaults: the whole project shares a $10 OpenCode budget (dev + evaluation + hidden-test run).
 DEFAULT_BUDGETS = {
     "factoid":    {"survey_pages_per_doc": 300,  "survey_cards_total": 400,  "verify_pages": 12,  "verify_chars": 40000,  "max_evidence": 40},
     "analytical": {"survey_pages_per_doc": 600,  "survey_cards_total": 1000, "verify_pages": 50,  "verify_chars": 120000, "max_evidence": 200},
@@ -31,12 +30,11 @@ def load_dotenv(path: Path | None = None) -> None:
 
 @dataclass(frozen=True)
 class Settings:
-    opencode_api_key: str = ""
-    opencode_base_url: str = "https://opencode.ai/inference/openai/v1/chat/completions"
-    llm_model: str = "qwen3.8-flash"
+    providers: tuple = ()                      # free-tier fallback order, built from env by kb.model_api.build_providers
+    llm_model: str = "auto"                    # a label: the chain picks the real model for each call
     answer_model: str = ""
-    price_input_per_m: float | None = 0.15
-    price_output_per_m: float | None = 0.47
+    price_input_per_m: float | None = 0.0
+    price_output_per_m: float | None = 0.0
     llm_concurrency: int = 12
     llm_timeout_s: int = 180
     llm_max_retries: int = 3
@@ -106,10 +104,6 @@ def _opt_float(raw: str | None, default: float | None) -> float | None:
 
 # env var name -> (field, parser)
 _ENV = {
-    "OPENCODE_API_KEY": ("opencode_api_key", str),
-    "OPENCODE_BASE_URL": ("opencode_base_url", str),
-    "LLM_MODEL": ("llm_model", str),
-    "ANSWER_MODEL": ("answer_model", str),
     "LLM_CONCURRENCY": ("llm_concurrency", int),
     "KB_DATA_DIR": ("data_dir", Path),
     "KB_EMBED_ELEMENTS": ("embed_elements", lambda v: v.strip().lower() in ("1", "true", "yes")),
@@ -135,8 +129,10 @@ def get_settings(**overrides) -> Settings:
     for env, (name, parse) in _ENV.items():
         if os.environ.get(env) not in (None, ""):
             values[name] = parse(os.environ[env])
-    values["price_input_per_m"] = _opt_float(os.environ.get("PRICE_INPUT_PER_M"), 0.15)
-    values["price_output_per_m"] = _opt_float(os.environ.get("PRICE_OUTPUT_PER_M"), 0.47)
+    from kb.model_api import build_providers
+    values["providers"] = build_providers(os.environ)
+    values["price_input_per_m"] = _opt_float(os.environ.get("PRICE_INPUT_PER_M"), 0.0)
+    values["price_output_per_m"] = _opt_float(os.environ.get("PRICE_OUTPUT_PER_M"), 0.0)
     values["ce_tau_low"] = _opt_float(os.environ.get("CE_TAU_LOW"), None)
     values["ce_tau_high"] = _opt_float(os.environ.get("CE_TAU_HIGH"), None)
     known = {f.name for f in fields(Settings)}
@@ -146,9 +142,4 @@ def get_settings(**overrides) -> Settings:
     values.update(overrides)
     if "data_dir" in values:
         values["data_dir"] = Path(values["data_dir"])
-    settings = replace(Settings(), **values)
-    from kb.model_api import REQUIRED_MODEL
-    for name in ("llm_model", "answer_model"):
-        if getattr(settings, name) not in ("", REQUIRED_MODEL):
-            raise ValueError(f"{name}={getattr(settings, name)!r} refused: set LLM_MODEL/ANSWER_MODEL to {REQUIRED_MODEL}")
-    return settings
+    return replace(Settings(), **values)

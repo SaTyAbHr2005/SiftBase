@@ -4,7 +4,7 @@ A smart knowledge base for AI agents that goes beyond top-k RAG. The API exposes
 
 No 0.95 accuracy result or production readiness is claimed.
 
-**Read [the project guide](docs/PROJECT.md) first** for the code structure, current status, known bugs and next steps. `/query` needs a new model provider before it can answer.
+**Read [the project guide](docs/PROJECT.md) first** for the code structure, current status, known bugs and next steps.
 
 ## Setup
 
@@ -15,7 +15,17 @@ python3.12 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-Copy `.env.example` to `.env` and configure the OpenCode key/model and Langfuse credentials locally. Never commit `.env`. OPENCODE_MODEL is also mapped to the shared LLM_MODEL by the launch script. The base URL is configurable; the example follows the supplied evaluator and is not a claim of live model availability. Set both PRICE fields: when `KB_BUDGET_USD` is set and a price is blank, every model call is refused, because the spend cap could not be enforced.
+Create `.env` and add a key for at least one free provider, plus your Langfuse credentials. Never commit `.env`.
+
+| Provider | Add to `.env` | Default model |
+|---|---|---|
+| Cloudflare Workers AI | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | `@cf/qwen/qwen3-30b-a3b-fp8` |
+| Groq | `GROQ_API_KEY` | `openai/gpt-oss-120b`, then `openai/gpt-oss-20b` |
+| OpenRouter | `OPENROUTER_API_KEY` | `openrouter/free` |
+| Mistral | `MISTRAL_API_KEY` | `mistral-small-latest` |
+| Gemini | `GEMINI_API_KEY` | `gemini-2.5-flash` |
+
+Each call tries the providers in that order and moves on after a rate limit, outage, bad key or invalid reply. Providers without a key are skipped. To change the order or models, set `KB_LLM_PROVIDERS`, for example `groq,gemini:gemini-2.5-flash-lite`. Mistral and Gemini free tiers can use your content for training, so leave them out for private documents. `python scripts/check_llm.py` makes one small call to each provider to test your keys.
 
 ```bash
 .venv/bin/python -m scripts.serve --env-file .env --host 127.0.0.1 --port 8000
@@ -42,12 +52,10 @@ That CLI reads process environment variables; the server launcher loads `.env`. 
 
 The default suite uses synthetic model replies, while PDF/SQLite/collection integration uses real adapters. Explicit slow model checks load pretrained weights and can download them. Langfuse connectivity is a separate explicit live check; it emits no fake inference usage.
 
-### Current low-cost inference profile
-
-The default is **Qwen3.8 Flash with thinking disabled**. Shared and query transports use OpenCode's Messages endpoint for this model; setting only the model ID on the old Chat Completions request is insufficient. `LLM_MODEL`, `ANSWER_MODEL` and `OPENCODE_MODEL` should all be `qwen3.8-flash`. Current verified catalogue rates are $0.15 input / $0.47 output per million tokens; explicit environment prices override defaults.
+### How model use stays low
 
 Page selection now uses the initial source FTS/vector rankings and per-obligation lexical matches locally. `KB_PAGE_SELECTION=llm` opts back into paid page-card surveying. The ten trace stages remain present. Local navigation does not establish factual support; source evidence and final claims still undergo semantic verification.
 
 BGE-small embeddings, MiniLM cross-encoder reranking, SQLite FTS5, extractive page cards, citation validation and arithmetic already run locally. No additional generative local model is required for these steps. Final-stage token reservations include both answer generation and claim verification, using the same model limits as actual calls.
 
-The current serving environment defaults to the `synthesis` writer; bare `QuerySettings()` remains extractive, and `KB_ANALYTICAL_WRITER=ledger` is opt-in. Configure the judge independently with `OPENCODE_JUDGE_MODEL`.
+The current serving environment defaults to the `synthesis` writer; bare `QuerySettings()` remains extractive, and `KB_ANALYTICAL_WRITER=ledger` is opt-in. The official judge runs the provider chain in reverse, so it is usually a different model from the writer; compare scores only between runs that report the same `judge_models`.

@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 import kb.llm as llm_mod
 from kb.config import get_settings
 from kb.errors import CollectionNotFound, KBError
-from kb.llm import FakeLLM, LLMError, OpenCodeLLM, parallel_map
+from kb.llm import FakeLLM, LLMError, ChainLLM, parallel_map
 from kb.testing import FakeReranker, HashEmbedder, make_pdf, memory_store_from_texts
 from kb.textutil import text_hash, tokens
 from kb.tracing import StepTrace, clip, lf_span, lf_trace_id
@@ -54,18 +54,18 @@ def test_scoped_has_fresh_usage_and_shared_calls():
     assert child.usage.calls == 1 and len(llm.calls) == 2
 
 
-def test_opencode_strips_fences_and_costs(monkeypatch, settings):
+def test_chain_strips_fences_and_costs(monkeypatch, settings):
     calls = _patch_post(monkeypatch, ['```json\n{"a": 1}\n```'])
-    llm = OpenCodeLLM(settings)
+    llm = ChainLLM(settings)
     assert llm.complete_json("s", "u", name="plan") == {"a": 1}
-    assert calls[0]["thinking"] == {"type": "disabled"} and calls[0]["temperature"] == 0
+    assert calls[0]["temperature"] == 0
     assert abs(llm.usage.cost_usd - 0.62) < 1e-9  # 1M in x $0.15 + 1M out x $0.47
 
 
 def test_unknown_price_gives_null_cost(monkeypatch, tmp_path):
     _patch_post(monkeypatch, ["hello"])
     monkeypatch.setenv("PRICE_INPUT_PER_M", "")
-    llm = OpenCodeLLM(get_settings(data_dir=tmp_path))
+    llm = ChainLLM(get_settings(data_dir=tmp_path))
     assert llm.complete_text("s", "u", name="answer") == "hello"
     assert llm.usage.cost_usd is None
 
@@ -73,14 +73,14 @@ def test_unknown_price_gives_null_cost(monkeypatch, tmp_path):
 def test_empty_content_retries_then_raises(monkeypatch, settings):
     calls = _patch_post(monkeypatch, [None])
     with pytest.raises(LLMError):
-        OpenCodeLLM(settings).complete_json("s", "u", name="plan")
+        ChainLLM(settings).complete_json("s", "u", name="plan")
     assert len(calls) == settings.llm_max_retries == 3
 
 
 def test_spend_cap_blocks_calls_and_ledger_records(monkeypatch, tmp_path):
     calls = _patch_post(monkeypatch, ['{"a": 1}'])
     s = get_settings(data_dir=tmp_path, budget_usd=2.0, llm_cache=False, price_input_per_m=0.30, price_output_per_m=1.20)
-    llm = OpenCodeLLM(s)
+    llm = ChainLLM(s)
     llm.complete_json("s", "u", name="plan")          # costs 1.50 (1M in + 1M out)
     ledger = (tmp_path / "spend.jsonl").read_text(encoding="utf-8").splitlines()
     assert len(ledger) == 1 and '"cost_usd": 1.5' in ledger[0]
@@ -93,8 +93,8 @@ def test_spend_cap_blocks_calls_and_ledger_records(monkeypatch, tmp_path):
 def test_response_cache_never_pays_twice(monkeypatch, tmp_path):
     calls = _patch_post(monkeypatch, ['{"a": 1}'])
     s = get_settings(data_dir=tmp_path)
-    assert OpenCodeLLM(s).complete_json("s", "u", name="plan") == {"a": 1}
-    llm = OpenCodeLLM(s)                       # new instance, same disk cache
+    assert ChainLLM(s).complete_json("s", "u", name="plan") == {"a": 1}
+    llm = ChainLLM(s)                       # new instance, same disk cache
     assert llm.complete_json("s", "u", name="plan") == {"a": 1}
     assert len(calls) == 1 and llm.usage.cache_hits == 1 and llm.usage.calls == 0
     llm.complete_json("s", "different prompt", name="plan")
@@ -114,7 +114,7 @@ def test_dryrun_llm_formats_and_estimates(tmp_path):
     assert llm.complete_json("s", user, name="verify") == {"keep": [{"id": "E1", "aspects": ["a1"], "note": "dryrun lexical overlap"}]}
     with pytest.raises(LLMError):
         llm.complete_json("s", "x", name="doc_card")
-    assert llm.usage.calls == 3 and llm.usage.input_tokens > 0 and llm.usage.cost_usd > 0
+    assert llm.usage.calls == 3 and llm.usage.input_tokens > 0 and llm.usage.cost_usd == 0
 
 
 def test_load_dotenv_does_not_override(monkeypatch, tmp_path):
@@ -206,7 +206,7 @@ def test_budget_without_prices_blocks_calls(monkeypatch, tmp_path):
     calls = _patch_post(monkeypatch, ['{"a": 1}'])
     s = get_settings(data_dir=tmp_path, budget_usd=1.0, price_input_per_m=None, llm_cache=False)
     with pytest.raises(LLMError, match="cap cannot be enforced"):
-        OpenCodeLLM(s).complete_json("s", "u", name="plan")
+        ChainLLM(s).complete_json("s", "u", name="plan")
     assert calls == []
 
 
@@ -230,24 +230,3 @@ def test_dryrun_answers_query_track_json_payloads(tmp_path):
     assert ans["status"] == "answered" and ans["claims"][0]["quotes"][0]["quote"] in text
     check = llm.complete_json("s", json.dumps({"claims": [{"claim_id": "c1"}]}), name="answer_verify")
     assert check["verdicts"][0]["verdict"] == "supported"
-
-
-def test_only_qwen_without_thinking_is_ever_sent(settings):
-    from kb.model_api import request_spec
-    _, _, payload = request_spec(settings.opencode_base_url, "qwen3.8-flash", "s", "u", 10)
-    assert payload["thinking"] == {"type": "disabled"}
-    with pytest.raises(ValueError, match="refused"):
-        request_spec(settings.opencode_base_url, "deepseek-v4.1-flash", "s", "u", 10)
-    with pytest.raises(ValueError, match="refused"):
-        get_settings(llm_model="qwen3.8-max")
-
-
-def test_cli_login_used_when_no_key(monkeypatch, settings):
-    import json, subprocess
-    from kb import opencode_auth
-    export = [{"integrationID": "opencode", "active": True, "value": {"type": "oauth", "access": "tok",
-               "expires": 4102444800000, "metadata": {"orgID": "org1"}}}]
-    monkeypatch.setattr(opencode_auth, "_cached", None)
-    monkeypatch.setattr(opencode_auth.shutil, "which", lambda n: "opencode")
-    monkeypatch.setattr(opencode_auth.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0, json.dumps(export), ""))
-    assert opencode_auth.cli_headers() == {"Authorization": "Bearer tok", "x-org-id": "org1"}

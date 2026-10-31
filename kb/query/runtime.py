@@ -31,6 +31,7 @@ class QueryRuntime:
         self.pending_ledger = False
         self.input_tokens = self.output_tokens = self.cost = 0
         self.unknown_usage = self.unknown_cost = False
+        self.models = set()
         self._lock = threading.RLock()
         self.path = Path(value(settings, "artifact_dir")) / self.request_id
         self.path.mkdir(parents=True, exist_ok=False)
@@ -232,6 +233,8 @@ class QueryRuntime:
             self.reserved_output += delta
 
     def _charge(self, usage):
+        if usage.get("model"):
+            self.models.add(usage["model"])
         for name in ("input_tokens", "output_tokens"):
             v = usage.get(name)
             if isinstance(v, int) and v >= 0:
@@ -248,5 +251,6 @@ class QueryRuntime:
         return {"calls": self.calls, "input_tokens": None if self.unknown_usage else self.input_tokens,
                 "output_tokens": None if self.unknown_usage else self.output_tokens,
                 "cost_usd": None if self.unknown_cost else self.cost,
+                "models": sorted(self.models),
                 "estimated_input_budget_units": self.estimated_input,
                 "unknown_reason": "Provider usage and/or verified prices unavailable" if self.unknown_usage or self.unknown_cost else None}

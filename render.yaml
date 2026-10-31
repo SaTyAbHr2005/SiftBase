@@ -23,13 +23,13 @@ services:
         value: extractive
       - key: KB_PARSE_WORKERS
         value: "1"
-      - key: OPENCODE_API_KEY
+      - key: CLOUDFLARE_API_TOKEN
         sync: false
-      - key: OPENCODE_BASE_URL
-        value: https://opencode.ai/inference/openai/v1/chat/completions
-      - key: LLM_MODEL
-        value: qwen3.8-flash
-      - key: KB_BUDGET_USD
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
         sync: false
       - key: MONGODB_URI
         sync: false

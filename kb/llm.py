@@ -153,83 +153,135 @@ def _semaphore(n: int) -> threading.BoundedSemaphore:
         return _semaphores[n]
 
 
-class OpenCodeLLM(LLM):
+_cooldowns: dict[str, float] = {}
+_cooldown_lock = threading.Lock()
+RATE_LIMIT_COOLDOWN_S = 60
+SERVER_ERROR_COOLDOWN_S = 30
+BAD_KEY_COOLDOWN_S = 3600
+
+
+def _cooling_until(provider) -> float:
+    with _cooldown_lock:
+        return _cooldowns.get(provider.label, 0.0)
+
+
+def _cool(provider, seconds: float) -> None:
+    with _cooldown_lock:
+        _cooldowns[provider.label] = max(_cooldowns.get(provider.label, 0.0), time.monotonic() + seconds)
+
+
+def _http_cooldown(resp) -> float:
+    """How long to skip a provider after this response; 0 means only this request was bad."""
+    if resp.status_code == 429:
+        after = str(resp.headers.get("Retry-After") or "")
+        return float(after) if after.isdigit() else RATE_LIMIT_COOLDOWN_S
+    if resp.status_code in (401, 402, 403):
+        return BAD_KEY_COOLDOWN_S
+    return SERVER_ERROR_COOLDOWN_S if resp.status_code >= 500 else 0
+
+
+class ChainLLM(LLM):
+    """Tries each free provider in order; a rate limit, outage, bad key or invalid reply moves to the next one."""
+
     def __init__(self, settings: Settings):
         super().__init__(settings)
         self.cache = ResponseCache(settings) if settings.llm_cache else None
 
-    def scoped(self) -> "OpenCodeLLM":
-        return OpenCodeLLM(self.settings)
+    def scoped(self) -> "ChainLLM":
+        return ChainLLM(self.settings)
 
     def _complete(self, system, user, name, model, max_tokens, json_mode):
         s = self.settings
         self.last_usage=None
         self.last_response=None
-        key = ResponseCache.key(model, json_mode, max_tokens, system, user) if self.cache else None
-        if self.cache:
-            hit = self.cache.get(key)
-            if hit is not None:
-                try:
-                    out = parse_json_content(hit) if json_mode else hit
-                    self.last_usage={"input_tokens":0,"output_tokens":0,"cost_usd":0.0}
-                    self.last_response={"content":hit,"finish_reason":"cache_hit","output_limit":max_tokens}
-                    with self._lock:
-                        self.usage.cache_hits += 1
-                    return out
-                except ValueError:
-                    pass  # corrupt entry: fall through to a live call
+        if not s.providers:
+            raise LLMError(f"{name}: no model provider configured; add a provider key to .env")
+        for provider in s.providers:
+            out = self._from_cache(provider, name, system, user, max_tokens, json_mode)
+            if out is not None:
+                return out
         if s.budget_usd is not None and (s.price_input_per_m is None or s.price_output_per_m is None):
             raise LLMError(f"{name}: KB_BUDGET_USD is set but PRICE_INPUT_PER_M/PRICE_OUTPUT_PER_M are blank, "
                            "so the cap cannot be enforced; set the prices")
         if s.budget_usd is not None and spent_usd(s) >= s.budget_usd:
             raise LLMError(f"{name}: spend cap KB_BUDGET_USD={s.budget_usd} reached ({spent_usd(s):.4f} USD recorded)")
-        from kb.model_api import request_spec, response_parts
-        try:
-            endpoint,wire_headers,payload=request_spec(s.opencode_base_url,model,system,user,max_tokens,json_mode)
-            if s.opencode_api_key:
-                auth={"Authorization":f"Bearer {s.opencode_api_key}"}
-            else:
-                from kb.opencode_auth import cli_headers
-                auth=cli_headers()  # logged-in opencode CLI; token stays in memory
-        except Exception as exc:
-            raise LLMError(f"{name}: {exc}") from None
-        headers={**auth,"Content-Type":"application/json",**wire_headers}
-        last_error: Exception | None = None
+        from kb.model_api import fit_output
+        estimate = (len(system) + len(user)) // 4
+        usable = [(p, fit_output(p, estimate, max_tokens)) for p in s.providers]
+        usable = [(p, limit) for p, limit in usable if limit is not None]
+        if not usable:
+            raise LLMError(f"{name}: about {estimate} input tokens fit no configured provider")
+        errors: list[str] = []
         for attempt in range(1, s.llm_max_retries + 1):
-            with lf_generation(name, model, {"system": clip(system, 2000), "user": clip(user, 4000)}) as gen:
-                retry_after = None
+            ready = [(p, limit) for p, limit in usable if _cooling_until(p) <= time.monotonic()]
+            for provider, limit in ready:
+                if getattr(self, "deadline", float("inf")) <= time.monotonic():
+                    raise LLMError(f"{name}: query deadline reached: {'; '.join(errors[-5:])}")
                 try:
-                    with _semaphore(s.llm_concurrency):
-                        remaining=min(s.llm_timeout_s,max(0.001,getattr(self,"deadline",time.monotonic()+s.llm_timeout_s)-time.monotonic()))
-                        resp = requests.post(endpoint, headers=headers, json=payload, timeout=remaining)
-                    if resp.status_code == 429 or resp.status_code >= 500:
-                        retry_after = resp.headers.get("Retry-After")
-                        raise LLMError(f"HTTP {resp.status_code}")
-                    resp.raise_for_status()
-                    data = resp.json()
-                    content,finish_reason,in_tok,out_tok=response_parts(data)
-                    if not isinstance(in_tok,int) or not isinstance(out_tok,int):
-                        raise LLMError("Provider usage missing; paid requests cannot be accounted")
-                    self._account(in_tok,out_tok)
-                    cost = self._cost(in_tok, out_tok)
-                    self.last_usage={"input_tokens":in_tok,"output_tokens":out_tok,"cost_usd":cost["total"] if cost else None}
-                    self.last_response={"content":content,"finish_reason":finish_reason,"output_limit":max_tokens}
-                    _record_spend(s, name, model, in_tok, out_tok, cost["total"] if cost else None)
-                    gen.update(output=clip(content or "", 4000), usage_details={"input": in_tok, "output": out_tok},
-                               **({"cost_details": cost} if cost else {}))
-                    if not content:
-                        raise LLMError(f"empty content, finish_reason={finish_reason}")
-                    out = parse_json_content(content) if json_mode else content
-                    if self.cache:
-                        self.cache.put(key, name, content)
-                    return out
+                    return self._attempt(provider, system, user, name, limit, max_tokens, json_mode)
                 except (requests.RequestException, LLMError, ValueError, KeyError, IndexError) as e:
-                    last_error = e
-                    gen.update(level="ERROR", status_message=str(e)[:300])
+                    errors.append(f"{provider.label}: {str(e)[:120]}")
             if attempt < s.llm_max_retries:
-                delay = float(retry_after) if retry_after and str(retry_after).isdigit() else min(30, 2 ** attempt) + random.random()
-                time.sleep(delay)
-        raise LLMError(f"{name}: failed after {s.llm_max_retries} attempts: {last_error}")
+                soonest = min(_cooling_until(p) for p, _ in usable) - time.monotonic()
+                time.sleep(max(soonest, min(30, 2 ** attempt) + random.random()) if soonest <= 30 else 0)
+        raise LLMError(f"{name}: every provider failed: {'; '.join(errors[-5:]) or 'all rate limited'}")
+
+    def _from_cache(self, provider, name, system, user, max_tokens, json_mode):
+        if not self.cache:
+            return None
+        hit = self.cache.get(ResponseCache.key(provider.label, json_mode, max_tokens, system, user))
+        if hit is None:
+            return None
+        try:
+            out = parse_json_content(hit) if json_mode else hit
+        except ValueError:
+            return None  # corrupt entry: fall through to a live call
+        self.last_usage={"input_tokens":0,"output_tokens":0,"cost_usd":0.0,"model":provider.label}
+        self.last_response={"content":hit,"finish_reason":"cache_hit","output_limit":max_tokens,"model":provider.label}
+        with self._lock:
+            self.usage.cache_hits += 1
+        return out
+
+    def _attempt(self, provider, system, user, name, limit, max_tokens, json_mode):
+        from kb.model_api import request_spec, response_parts
+        s = self.settings
+        endpoint,headers,payload=request_spec(provider,system,user,limit,json_mode)
+        self.last_response=None
+        with lf_generation(name, provider.model, {"system": clip(system, 2000), "user": clip(user, 4000)}) as gen:
+            try:
+                with _semaphore(s.llm_concurrency):
+                    remaining=min(s.llm_timeout_s,max(0.001,getattr(self,"deadline",time.monotonic()+s.llm_timeout_s)-time.monotonic()))
+                    try:
+                        resp = requests.post(endpoint, headers=headers, json=payload, timeout=(min(5, remaining), remaining))
+                    except requests.RequestException:
+                        _cool(provider, SERVER_ERROR_COOLDOWN_S)
+                        raise
+                if resp.status_code >= 400:
+                    _cool(provider, _http_cooldown(resp))
+                    raise LLMError(f"HTTP {resp.status_code}")
+                content,finish_reason,in_tok,out_tok=response_parts(resp.json())
+                # Some free endpoints omit usage: estimate so limits and traces stay meaningful.
+                in_tok = in_tok if isinstance(in_tok,int) else (len(system)+len(user))//4
+                out_tok = out_tok if isinstance(out_tok,int) else len(content or "")//4
+                self._account(in_tok,out_tok)
+                cost = self._cost(in_tok, out_tok)
+                total = cost["total"] if cost else None
+                earlier = self.last_usage or {}  # a call that falls back still used the tokens of its failed attempts
+                self.last_usage={"input_tokens":earlier.get("input_tokens",0)+in_tok,"output_tokens":earlier.get("output_tokens",0)+out_tok,
+                                 "cost_usd":None if total is None else earlier.get("cost_usd",0.0)+total,"model":provider.label}
+                self.last_response={"content":content,"finish_reason":finish_reason,"output_limit":max_tokens,"model":provider.label}
+                _record_spend(s, name, provider.label, in_tok, out_tok, total)
+                gen.update(output=clip(content or "", 4000), usage_details={"input": in_tok, "output": out_tok},
+                           **({"cost_details": cost} if cost else {}))
+                if not content:
+                    raise LLMError(f"empty content, finish_reason={finish_reason}")
+                out = parse_json_content(content) if json_mode else content
+                if self.cache:
+                    self.cache.put(ResponseCache.key(provider.label, json_mode, max_tokens, system, user), name, content)
+                return out
+            except (requests.RequestException, LLMError, ValueError, KeyError, IndexError) as e:
+                gen.update(level="ERROR", status_message=str(e)[:300])
+                raise
 
     def _cost(self, in_tok: int, out_tok: int) -> dict | None:
         s = self.settings
@@ -372,4 +424,4 @@ class DryRunLLM(LLM):
 
 
 def get_llm(settings: Settings) -> LLM:
-    return DryRunLLM(settings) if settings.llm_mode == "dryrun" else OpenCodeLLM(settings)
+    return DryRunLLM(settings) if settings.llm_mode == "dryrun" else ChainLLM(settings)
