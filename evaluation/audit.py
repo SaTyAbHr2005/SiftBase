@@ -28,10 +28,10 @@ def judge_consistency(metrics, answer, judge_calls=()):
     unlabelled=sorted(set(bp)-matched-missing)
     if unlabelled:
         flags.append({'kind':'benchmark_points_neither_matched_nor_missing','ids':unlabelled})
-    if re.search(r'\[[^\]]*\.pdf p\d+',answer) and ap and not any(re.search(r'\.pdf|\bpage\b|\bp\d+\b',p,re.I) for p in ap.values()):
+    if re.search(r'\[[^\]]*\.pdf p\d+',answer) and ap and not any(re.search(r'\.pdf|\bpage\b|\bp\d+\b',str(p),re.I) for p in ap.values()):
         flags.append({'kind':'citations_in_answer_dropped_by_decomposition'})
     for key in missing:
-        point=bp.get(key,'')
+        point=str(bp.get(key,''))  # a judge may return a point as an object rather than text
         pages=re.findall(r'\bpage\s+(\d+)\b',point,re.I)
         names=re.findall(r'[\w.-]+\.pdf',point,re.I)
         # Page and filename may be decomposed into separate benchmark points.

@@ -124,7 +124,7 @@ Design notes: [METADATA_RETRIEVAL.md](METADATA_RETRIEVAL.md) covers document nav
 ## Known risks
 
 - **Not tested live:** the chain's endpoints, default models and thinking settings come from provider docs. `scripts/check_llm.py` is the first check.
-- **Mixed models:** one answer can use several models, so quality may vary between queries. Compare scores only between runs with the same `judge_models`.
+- **Mixed models:** one answer can use several models, so quality may vary between queries. The judge uses one model, and scores should only be compared between runs with the same `judge_models`.
 - **Old indexes:** collections built before this version have no source-confirmed years, so their year checks stay off until they are re-indexed.
 - **Langfuse cost:** each model call may be recorded twice (`kb/llm.py` and the query tracing both log usage). Not confirmed.
 - **Authentication:** neither route has any, so don't expose it publicly without adding some.

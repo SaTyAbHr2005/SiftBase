@@ -78,27 +78,39 @@ def evaluate_file(run_path,notebook=None,expected_hash=EXPECTED_EVALUATOR_SHA256
 
 
 class OfficialJudgeTransport:
-    """Send official judge prompts through the free chain without changing official metric logic.
+    """Send official judge prompts to one free model without changing official metric logic.
 
-    The chain runs in reverse, so the judge is usually a different model from the one that wrote the answer.
-    Scores are only comparable between runs that report the same judge_models."""
-    def __init__(self):
+    One model only (KB_JUDGE_PROVIDERS, default Gemini): scores from different judges are not comparable, so a rate
+    limit waits and a judge that stays down leaves the row unscored rather than switching model."""
+    def __init__(self,attempts=6,wait_s=65):
+        import os
         from dataclasses import replace
         from kb.config import get_settings
         from kb.llm import ChainLLM
+        from kb.model_api import build_providers
         settings=get_settings()
-        self.log=[];self.models=set()
+        providers=build_providers({**os.environ,"KB_LLM_PROVIDERS":os.getenv("KB_JUDGE_PROVIDERS","gemini")})[:1] or settings.providers[-1:]
+        self.log=[];self.models=set();self.attempts,self.wait_s=attempts,wait_s
         self.cache=settings.ledger_path().parent/"judge_cache"
-        self.client=ChainLLM(replace(settings,providers=tuple(reversed(settings.providers)),llm_cache=False,llm_max_retries=1))
+        self.client=ChainLLM(replace(settings,providers=providers,llm_cache=False,llm_max_retries=1))
 
     def call_structured(self,system_prompt,user_prompt,max_tokens=10000,temperature=0,max_retries=3):
+        import time
+        from kb.llm import LLMError
         # Temperature 0: the same judge call gives the same verdict, so a rerun reads it from disk for free.
         key=hashlib.sha256(json.dumps([system_prompt,user_prompt,max_tokens]).encode()).hexdigest()
         cached=self.cache/(key+".json")
         if cached.is_file():
             self.log.append({"request_sha256":key,"cached":True,"max_tokens":max_tokens})
             return json.loads(cached.read_text(encoding="utf-8"))
-        result=self.client.complete_json(system_prompt,user_prompt,name="official_judge",max_tokens=max_tokens)
+        for attempt in range(self.attempts):
+            try:
+                result=self.client.complete_json(system_prompt,user_prompt,name="official_judge",max_tokens=max_tokens)
+                break
+            except LLMError:
+                if attempt==self.attempts-1:
+                    raise
+                time.sleep(self.wait_s)
         response=self.client.last_response or {}
         self.models.add(response.get("model"))
         cached.parent.mkdir(parents=True,exist_ok=True)

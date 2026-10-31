@@ -191,16 +191,47 @@ def test_thinking_text_is_removed_from_replies():
     assert response_parts(body)[0] == '{"ok": true}'
 
 
-def test_judge_runs_the_chain_in_reverse_and_reuses_saved_verdicts(tmp_path, monkeypatch, post):
+def _judge(tmp_path, monkeypatch, **kw):
     from evaluation.official import OfficialJudgeTransport
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    monkeypatch.setattr("kb.config.get_settings", lambda: get_settings(data_dir=tmp_path))
+    return OfficialJudgeTransport(wait_s=0, **kw)
+
+
+def test_judge_uses_one_model_and_reuses_saved_verdicts(tmp_path, monkeypatch, post):
     calls, replies = post
-    settings = get_settings(data_dir=tmp_path, providers=(A, B))
-    monkeypatch.setattr("kb.config.get_settings", lambda: settings)
-    replies[B.url] = Reply(content='{"points": ["a"]}')
-    judge = OfficialJudgeTransport()
+    judge = _judge(tmp_path, monkeypatch)
+    url = judge.client.settings.providers[0].url
+    replies[url] = Reply(content='{"points": ["a"]}')
     assert judge.call_structured("s", "u", max_tokens=512) == {"points": ["a"]}
     assert judge.call_structured("s", "u", max_tokens=512) == {"points": ["a"]}
-    assert calls == [B.url] and judge.models == {"b:model-b"} and judge.log[1]["cached"]
+    assert calls == [url] and judge.models == {"gemini:gemini-3.5-flash"} and judge.log[1]["cached"]
+
+
+def test_judge_waits_out_a_rate_limit_and_never_switches_model(tmp_path, monkeypatch, post):
+    calls, replies = post
+    judge = _judge(tmp_path, monkeypatch)
+    url = judge.client.settings.providers[0].url
+    replies[url] = [Reply(429, headers={"Retry-After": "0"}), Reply(503), Reply(content='{"ok": 1}')]
+    monkeypatch.setattr(llm_mod, "SERVER_ERROR_COOLDOWN_S", 0)
+    assert judge.call_structured("s", "u") == {"ok": 1} and calls == [url] * 3
+
+
+def test_judge_that_stays_down_fails_instead_of_switching(tmp_path, monkeypatch, post):
+    calls, replies = post
+    judge = _judge(tmp_path, monkeypatch, attempts=2)
+    url = judge.client.settings.providers[0].url
+    replies[url] = Reply(400)
+    with pytest.raises(LLMError):
+        judge.call_structured("s", "u")
+    assert calls == [url] * 2
+
+
+def test_audit_accepts_points_returned_as_objects():
+    from evaluation.audit import judge_consistency
+    point = {"claim": "x", "source": "a.pdf, page 6"}
+    metrics = {"answer_detail": {"benchmark_points": {"bp1": point}, "agent_points": {"ap1": point}, "matched_ids": [], "missing_ids": ["bp1"], "extra_ids": []}}
+    assert judge_consistency(metrics, "text [a.pdf p6]")["official_scores_unchanged"]
 
 
 def test_a_collection_name_with_a_trailing_newline_is_refused(tmp_path):

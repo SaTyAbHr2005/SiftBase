@@ -58,4 +58,4 @@ Page selection now uses the initial source FTS/vector rankings and per-obligatio
 
 BGE-small embeddings, MiniLM cross-encoder reranking, SQLite FTS5, extractive page cards, citation validation and arithmetic already run locally. No additional generative local model is required for these steps. Final-stage token reservations include both answer generation and claim verification, using the same model limits as actual calls.
 
-The current serving environment defaults to the `synthesis` writer; bare `QuerySettings()` remains extractive, and `KB_ANALYTICAL_WRITER=ledger` is opt-in. The official judge runs the provider chain in reverse, so it is usually a different model from the writer; compare scores only between runs that report the same `judge_models`.
+The current serving environment defaults to the `synthesis` writer; bare `QuerySettings()` remains extractive, and `KB_ANALYTICAL_WRITER=ledger` is opt-in. The official judge uses one model only (`KB_JUDGE_PROVIDERS`, default Gemini), so scores stay comparable: it waits out rate limits, and a judge that stays down leaves a question unscored. Compare scores only between runs that report the same `judge_models`.
