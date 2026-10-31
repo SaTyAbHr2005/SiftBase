@@ -22,7 +22,7 @@ Create `.env` and add a key for at least one free provider, plus your Langfuse c
 | Cloudflare Workers AI | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | `@cf/qwen/qwen3-30b-a3b-fp8` |
 | Groq | `GROQ_API_KEY` | `openai/gpt-oss-120b`, then `openai/gpt-oss-20b` |
 | OpenRouter | `OPENROUTER_API_KEY` | `openrouter/free` |
-| Mistral | `MISTRAL_API_KEY` | `mistral-small-latest` |
+| Mistral | `MISTRAL_API_KEY` | `ministral-14b-latest`, then `ministral-8b-latest` |
 | Gemini | `GEMINI_API_KEY` | `gemini-3.5-flash` |
 
 Each call tries the providers in that order and moves on after a rate limit, outage, bad key or invalid reply. Providers without a key are skipped. To change the order or models, set `KB_LLM_PROVIDERS`, for example `groq,gemini:gemini-3.5-flash-lite`. Mistral and Gemini free tiers can use your content for training, so leave them out for private documents. `python scripts/check_llm.py` makes one small call to each provider to test your keys.

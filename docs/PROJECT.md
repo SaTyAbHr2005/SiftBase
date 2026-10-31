@@ -72,7 +72,7 @@ Not in this repo, and needed for benchmarks: the training PDFs, the benchmark fi
 
 ## Model providers
 
-Free tiers only. `kb/model_api.py` holds the list, and every provider takes the same OpenAI-style request. The default order is Cloudflare, Groq (two models), OpenRouter, Mistral, then Gemini, skipping any without a key.
+Free tiers only. `kb/model_api.py` holds the list, and every provider takes the same OpenAI-style request. The default order is Cloudflare, Groq (two models), OpenRouter, Mistral (two models), then Gemini, skipping any without a key.
 
 `ChainLLM` in `kb/llm.py` tries them in order for each call:
 
