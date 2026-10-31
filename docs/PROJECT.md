@@ -2,33 +2,31 @@
 
 Start here. This covers what the project is, how to run it, how the code is organised, what is done and what is left.
 
-Last reviewed at the 10-stage task-worksheet code (2026-10-31).
+Last updated 2026-10-31.
 
 ## What it is
 
-A knowledge base for AI agents that goes beyond top-k RAG. A query is planned, routed to the documents it needs, searched page by page, checked against exact source text, and answered with document and page citations.
+A knowledge base for AI agents that goes beyond top-k RAG, for documents of any kind. A query is planned, routed to the documents it needs, searched page by page, checked against exact source text, and answered with document and page citations.
 
 The API has exactly two routes:
 
 - `POST /index`: multipart `file` (ZIP of PDFs) and `collection_name`. Blocks until the collection is live.
-- `POST /query`: JSON `{"collection_name": "...", "query": "..."}`. Returns the answer, source chunks with physical pages, a 10-step trace, coverage, usage and cost.
+- `POST /query`: JSON `{"collection_name": "...", "query": "..."}`. Returns the answer, source chunks with physical pages, a 10-step trace, coverage, usage (including which models answered) and cost.
 
 ## Current status
 
 | Area | Status |
 |---|---|
 | Ingestion, indexing, collections | Working. 35 PDFs / 6,970 pages took 18.1 min on a 16-thread PC |
-| Query pipeline | Code complete, but needs a model provider |
-| Model provider | **None. OpenCode access has ended, so `/query` returns 503 until a new provider is added** |
-| Offline tests | 277 passed, 2 skipped, 7 slow deselected |
-| Accuracy target (0.95) | **Not met** |
-| Latency target (30 s) | **Not met** on analytical queries (43 to 106 s measured) |
+| Query pipeline | Working with fake providers. **Not yet run against a live free model** |
+| Model providers | Free-tier fallback chain built. Needs your keys in `.env` |
+| Offline tests | 308 passed, 1 skipped, 7 slow deselected |
+| Accuracy target (0.95) | **Not met.** Needs re-measuring on free models |
+| Latency target (30 s) | **Not met** on analytical queries in past runs (43 to 106 s) |
 
-Without a provider, `/index` still works but builds weaker fallback document cards with no issuer or entities. Dry-run mode runs the whole flow with placeholder answers.
+### Last measured scores
 
-### Latest measured scores
-
-Scored with the unmodified official evaluator, using Qwen3.8 Flash for answers and GLM 5.3 Flash as judge. These are small development runs, not a full benchmark.
+These came from the previous paid model (Qwen3.8 Flash, judged by GLM 5.3 Flash), before the changes in this version. They won't carry over to free models.
 
 | Case | Answer P / R | Context P / R | Query time |
 |---|---|---|---|
@@ -38,6 +36,12 @@ Scored with the unmodified official evaluator, using Qwen3.8 Flash for answers a
 
 First-pass answer P / R on documents not used before tuning: C26 11.76% / 25%, A20 52.63% / 30.91%, A21 11.11% / 2.04%, C32 0% / 0%. Generalisation is still weak.
 
+### Model use per query
+
+Across 12 fully measured past runs, the median query used 31.5 calls, about 98,000 tokens and 58 s.
+
+Replaying those runs through the new verification rule, with no model calls, saved a median of 7 verification calls on runs with more than 8 batches. Every benchmark page those runs had reached was still reached, and 96% of passages kept on those pages stayed. This covers only 4 questions (B30, C17, C18, C31), so re-test it on a live model. Writers and claim checks now take twice as much per call, which should also reduce calls.
+
 ## Run it
 
 Python 3.10 to 3.12. RapidOCR needs a version below 3.13.
@@ -45,11 +49,16 @@ Python 3.10 to 3.12. RapidOCR needs a version below 3.13.
 ```bash
 python -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-cp .env.example .env
 .venv/bin/python -m pytest -q
 ```
 
 On Windows use `.venv\Scripts\python`. `requirements.lock.py312-macos.txt` applies to macOS only.
+
+Add at least one provider key to `.env` (see the README for names), then test them:
+
+```bash
+python scripts/check_llm.py
+```
 
 Run with no model and no network:
 
@@ -61,22 +70,39 @@ KB_LLM_MODE=dryrun KB_REQUIRE_LANGFUSE=0 .venv/bin/python -m scripts.serve --env
 
 Not in this repo, and needed for benchmarks: the training PDFs, the benchmark file and `Evaluation.ipynb`, all under the ignored `Train/` folder. Never modify the evaluation notebook.
 
+## Model providers
+
+Free tiers only. `kb/model_api.py` holds the list, and every provider takes the same OpenAI-style request. The default order is Cloudflare, Groq (two models), OpenRouter, Mistral, then Gemini, skipping any without a key.
+
+`ChainLLM` in `kb/llm.py` tries them in order for each call:
+
+- **Moves on after:** a rate limit, server error, timeout, bad key, rejected request or invalid reply.
+- **Skips for a while:** a rate-limited provider until its `Retry-After` (or 60 s), one with server errors or timeouts for 30 s, and one with a bad key for an hour.
+- **Skips without a request:** a provider whose per-minute limit is too small for the call.
+- **Records:** each answer's provider and model in `usage.models`, and each step's in the run's `attempts.json`.
+
+Free limits change often, so check them on each provider's own page. Mistral and Gemini free tiers can use your content for training, so remove them from `KB_LLM_PROVIDERS` for private documents.
+
 ## Query pipeline
 
 | # | Trace step | What it does | Main file |
 |---|---|---|---|
 | 1 | `query_planning` | LLM turns the question into aspects, tasks and candidate documents | `kb/query/plan.py` |
-| 2 | `routing_guard` | Checks document identity and period | `kb/query/plan.py` |
+| 2 | `routing_guard` | Checks document identity and version | `kb/query/plan.py` |
 | 3 | `candidate_pages` | Per-document BM25 and vector search with fair page quotas | `kb/query/candidates.py` |
 | 4 | `page_survey` | Picks pages locally by default; `KB_PAGE_SELECTION=llm` uses the LLM | `kb/query/screen.py` |
 | 5 | `element_retrieval` | Gathers paragraphs and tables from chosen pages | `kb/query/candidates.py` |
 | 6 | `element_triage` | MiniLM cross-encoder orders candidates; scores never prove anything | `kb/query/triage.py` |
-| 7 | `element_verification` | LLM checks source fragments, kept items need exact source spans | `kb/query/screen.py` |
+| 7 | `element_verification` | LLM checks source fragments in waves and stops when a wave stops helping | `kb/query/screen.py` |
 | 8 | `answer_generation` | Writes claims linked to verified evidence and a task worksheet | `kb/query/answer.py`, `kb/query/worksheet.py` |
 | 9 | `answer_verification` | LLM and arithmetic checks remove unsupported claims | `kb/query/answer.py` |
 | 10 | `citation_render` | Adds `[file.pdf pN]` citations from source-owned data | `kb/query/answer.py` |
 
 `kb/query/pipeline.py` runs these steps, and `kb/query/runtime.py` enforces the deadline and the token, call and cost budgets.
+
+**Routing rule:** a document with a different year is ruled out only when another version of the same document has the requested year, and that year was read from the document's own text. Otherwise it stays, because a year in a question can name events inside a source. Other documents are searched only when routing couldn't settle on a source.
+
+**Verification rule:** 8 batches run first, then 4 at a time, up to 16. Another wave runs only if the last one kept something and either a requested topic has no evidence, or the wave found a new page with a keep rate of at least 30%.
 
 ## Code map
 
@@ -84,7 +110,7 @@ Not in this repo, and needed for benchmarks: the training PDFs, the benchmark fi
 |---|---|
 | `kb/api.py`, `kb/routes/` | FastAPI app and the two routes |
 | `kb/config.py` | Environment settings. `kb/query/settings.py` adds query defaults, and shared values override them |
-| `kb/llm.py`, `kb/model_api.py`, `kb/opencode_auth.py` | Model calls, wire format, retries, spend ledger and response cache |
+| `kb/model_api.py`, `kb/llm.py` | Provider list, wire format, fallback chain, spend ledger and response cache |
 | `kb/ingest/` | ZIP to collection: parse, OCR, segment, metadata cards, navigation |
 | `kb/store.py`, `kb/registry.py`, `kb/remote.py` | SQLite FTS5 and vectors, atomic generations, optional MongoDB Atlas copy |
 | `kb/embed.py` | BGE-small embeddings and MiniLM reranker on CPU |
@@ -95,25 +121,22 @@ Not in this repo, and needed for benchmarks: the training PDFs, the benchmark fi
 
 Design notes: [METADATA_RETRIEVAL.md](METADATA_RETRIEVAL.md) covers document navigation, and [TASK_WORKSHEET.md](TASK_WORKSHEET.md) covers the current writer.
 
-## Known bugs
+## Known risks
 
-Confirmed during the code review, none fixed yet. Listed by priority.
-
-1. **The routing guard's year and ID checks never fire.** `confirmed()` in `kb/query/plan.py` reads `metadata_provenance`, which real `DocCard` objects don't have. A 2025 question kept both FY2025 and FY2026 documents. "Latest" selection is affected too. Tests pass only because their fake card has the field.
-2. **Deadline cut-offs are reported as provider failures.** With a healthy 6 s per call stub and the 30 s deadline, 7 of 31 verify calls were cut off and traced as a provider or schema failure, and `cost_usd` became unknown.
-3. **Unrelated documents are always added.** `global_escape` is computed in `kb/query/plan.py` but `kb/query/pipeline.py` always calls `escape_pages`, which spends verification budget on the wrong documents.
-4. **A stage starting past the deadline fails the whole query** with HTTP 504 and no partial answer.
-5. **False limitation text.** "No evidence verified" can appear when the recovery pass kept evidence.
-6. **Smaller:** `select_portfolio` passes aspect text to `narrow_factoid` where the query belongs, and `/index` accepts a collection name with a trailing newline (`match` with `$` instead of `fullmatch`).
-
-Not confirmed: Langfuse may record each model call's cost twice (`kb/llm.py` and the query tracing both log usage).
-
-Other risks: neither route has authentication, so don't expose it publicly without adding some. PyMuPDF is AGPL or paid commercial. The default `QuerySettings()` writer is `extractive` while the serving default is `synthesis`, so many tests cover a different mode from production.
+- **Not tested live:** the chain's endpoints, default models and thinking settings come from provider docs. `scripts/check_llm.py` is the first check.
+- **Mixed models:** one answer can use several models, so quality may vary between queries. Compare scores only between runs with the same `judge_models`.
+- **Old indexes:** collections built before this version have no source-confirmed years, so their year checks stay off until they are re-indexed.
+- **Langfuse cost:** each model call may be recorded twice (`kb/llm.py` and the query tracing both log usage). Not confirmed.
+- **Authentication:** neither route has any, so don't expose it publicly without adding some.
+- **Licence:** PyMuPDF is AGPL or paid commercial.
+- **Test coverage:** the default `QuerySettings()` writer is `extractive` while the serving default is `synthesis`, so many tests cover a different mode from production.
 
 ## Next steps
 
-1. **Add a model provider.** Change `kb/model_api.py` and the model lock in `kb/config.py` first (also env names and prices), simplify `kb/llm.py` auth and delete `kb/opencode_auth.py`. Then update `evaluation/official.py`'s judge transport, `scripts/`, `render.yaml`, `.env.example` and the affected tests (`tests/conftest.py`, `test_foundation.py`, `track_b/test_evaluation.py`, `track_b/test_judge_model.py`, `track_b/test_provider.py`).
-2. **Add the provider to the response cache key,** and start a new `data/spend.jsonl`. The cache key would otherwise reuse old answers for the same model name, and past spend counts toward `KB_BUDGET_USD`.
-3. **Fix bugs 1 to 4.**
-4. **Re-measure scores.** Prompts and time limits were tuned for Qwen, so the numbers above won't carry over to a new model.
-5. **Remove unused code:** duplicate types in `kb/models.py`, `OpenCodeJSONClient`, `write_answer`, `StepTrace`, `kb/query/demo_app.py`. The ledger writer (`kb/query/ledger.py`) is optional and measured worse.
+1. **Add keys and run `scripts/check_llm.py`,** then fix any endpoint or model problems it shows.
+2. **Re-index and measure a baseline** on a fixed set: B30, C17, C18, C26, C32 and the unseen-document cases. Free limits mean this takes several days of daily allowance.
+3. **Test each call reduction against that baseline,** and drop any that lowers accuracy.
+4. **Work on precision.** C18's low precision with many kept passages on the right pages points at the writing step.
+5. **Add production basics:** authentication, rate limits and a Docker setup.
+6. **Write `DESIGN.md` and build the frontend.**
+7. **Remove unused code:** duplicate types in `kb/models.py`, `write_answer`, `StepTrace`, `kb/query/demo_app.py`. The ledger writer (`kb/query/ledger.py`) is optional and measured worse.

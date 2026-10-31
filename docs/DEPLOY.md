@@ -1,6 +1,6 @@
 # Deployment
 
-> Written for the hackathon. OpenCode access has ended, so read its steps as a pattern until a new provider is added. See [PROJECT.md](PROJECT.md).
+> Written for the hackathon, so its server steps use the old provider. Set the free provider keys from the README instead. See [PROJECT.md](PROJECT.md).
 
 ## The official endpoint is the organisers' server (PS §11.3, §11.4, §16)
 - The organisers give each team a server, and the submission confirms that `/index` and `/query` are live **on that server**.
