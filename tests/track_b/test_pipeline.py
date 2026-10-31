@@ -160,3 +160,51 @@ def test_failed_claim_check_batch_removes_only_its_claims(tmp_path):
         return {"verdicts":[{"claim_id":i,"verdict":"supported"} for i in ids]}
     draft,report=verify_answer(FakeLLM(respond),AnswerDraft(claims,"answered"),numbered,settings(tmp_path))
     assert report["accepted"]==6 and "1 claim-check batches failed" in draft.limitations
+
+
+def _wave_case(tmp_path,keep,**kw):
+    """60 candidates (8 batches = 8 per batch) across 60 pages; keep(batch_number, element) decides what is kept."""
+    from kb.query.screen import verify_elements
+    from kb.query.types import QueryPlan,Aspect,Candidate
+    store=MemoryStore({"a":[f"Fact number {i} about pumps." for i in range(160)]})
+    plan=QueryPlan("analytical",[Aspect("a1","pumps",["pumps"])],["a"])
+    middle=[Candidate(e,["a1"],["survey_high"]) for e in store.elements]
+    batches=[]
+    def respond(n,p):
+        with_lock.append(1);number=len(with_lock)
+        batches.append(number)
+        return {"keep":[{"id":e["id"],"aspects":["a1"],"support_span_ids":list(e["source_spans"])[:1],"relevance":"direct"}
+                        for e in p["elements"] if keep(number,e)]}
+    with_lock=[]
+    return verify_elements(FakeLLM(respond),store,plan,"pumps",middle,settings(tmp_path,verify_chars_total=10**7,**kw)),batches
+
+
+def test_verification_stops_after_a_wave_that_adds_nothing(tmp_path):
+    (kept,report),batches=_wave_case(tmp_path,lambda n,e:n<=4)
+    assert len(batches)==8+4 and report["stopped_early"]  # first wave, then one more wave proves nothing new
+    assert report["elements_seen"]==12*8 and report["remaining_candidates"]==160-12*8
+
+
+def test_verification_continues_while_new_pages_keep_appearing_up_to_the_cap(tmp_path):
+    (kept,report),batches=_wave_case(tmp_path,lambda n,e:True)
+    assert len(batches)==16 and report["stopped_early"] and len(kept)==16*8
+
+
+def test_verification_stops_when_later_waves_rarely_keep_anything(tmp_path):
+    (kept,report),batches=_wave_case(tmp_path,lambda n,e:n<=8 or int(e["id"][1:])==1)
+    assert len(batches)==12 and report["stopped_early"]
+
+
+def test_a_requested_topic_without_evidence_earns_another_wave(tmp_path):
+    from kb.query.screen import verify_elements
+    from kb.query.types import QueryPlan,Aspect,Candidate
+    store=MemoryStore({"a":[f"Fact number {i} about pumps." for i in range(160)]})
+    tasks=[{"id":"T1","text":"pump pressure","operation":"lookup","obligation_ids":["a1"],"source_roles":[],"query_anchor":"pumps"}]
+    plan=QueryPlan("analytical",[Aspect("a1","pumps",["pumps"])],["a"],tasks=tasks)
+    calls=[]
+    def respond(n,p):
+        calls.append(1)
+        tagged=[] if len(calls)<=12 else ["T1"]
+        return {"keep":[{"id":e["id"],"aspects":["a1"],"support_span_ids":list(e["source_spans"])[:1],"relevance":"direct","requirement_ids":tagged} for e in p["elements"][:1]]}
+    kept,report=verify_elements(FakeLLM(respond),store,plan,"pumps",[Candidate(e,["a1"],["survey_high"]) for e in store.elements],settings(tmp_path,verify_chars_total=10**7))
+    assert len(calls)==16  # a keep rate this low would have stopped at 12 without the uncovered topic

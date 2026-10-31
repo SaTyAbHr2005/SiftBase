@@ -28,6 +28,11 @@ class QuerySettings:
     escape_pages: int = 20
     max_ce_pairs: int = 400
     verify_batch_elements: int = 8
+    # Verification runs in waves over the ranked candidates and stops once a wave stops adding useful evidence.
+    verify_first_wave: int = 8
+    verify_next_wave: int = 4
+    verify_max_batches: int = 16
+    verify_min_keep_rate: float = 0.3
     factoid_initial_elements: int = 8
     factoid_reserve_elements: int = 8
     factoid_recovery_batches: int = 2  # extra targeted tranches; never an unbounded scan
@@ -60,10 +65,10 @@ class QuerySettings:
     analytical_answer_claims: int = 80
     # Synthesis: code picks the facts, each writer phrases at most this many; writer count and every output limit are
     # computed from the facts. Claim checks run in parallel batches of claims_per_check.
-    facts_per_writer: int = 12
+    facts_per_writer: int = 24
     analytical_fact_chars: int = 8000  # shared source budget; topic coverage beats restoring every candidate
     max_answer_writers: int = 10
-    claims_per_check: int = 12
+    claims_per_check: int = 24
     artifact_dir: Path = Path("artifacts/runs")
     strict_observability: bool = True
     raw_token_budget_factoid: int = 12000

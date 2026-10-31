@@ -187,16 +187,38 @@ def verify_elements(llm,store,plan,query,middle,settings,*,ctx=None,_allow_task_
         if plan.tasks:payload['tasks']=plan.tasks
         return [batch,local,spans,payload,min(2400,256+160*len(batch)),None]
     work=[build(batch) for batch in batches]
-    if not fast and len(work)>1:
-        # All batches in one concurrent round (budget reserved in order): a 30 s answer leaves no time for
-        # sequential checks. The factual path stays sequential because it stops at the first kept batch.
-        for item,result in zip(work,_call_many(llm,ctx,"verify",VERIFY_SYSTEM+(ID_FINDING_SYSTEM if integrated else ""),[w[3] for w in work],[w[4] for w in work])):
+    def run_wave(items):
+        for item,result in zip(items,_call_many(llm,ctx,"verify",VERIFY_SYSTEM+(ID_FINDING_SYSTEM if integrated else ""),[w[3] for w in items],[w[4] for w in items])):
             item[5]=result
+    # Each wave runs concurrently (budget reserved in order). The factual path stays sequential because it stops
+    # at the first kept batch.
+    waves=not fast and len(work)>1
+    if waves:
+        run_wave(work[:value(settings,"verify_first_wave")])
+    wave_start_kept=set();wave_start_seen=0;split_items=set()
+    def worth_another_wave():
+        """Ranked candidates get less useful as they go: continue only while a wave still adds something."""
+        new=set(kept)-wave_start_kept
+        rate=len(new)/max(1,report["elements_seen"]-wave_start_seen)
+        if report["batches"]>=value(settings,"verify_max_batches") or not new:
+            return False
+        covered={r for ev in kept.values() for r in ev.requirement_ids}
+        if topic_ids-covered:
+            return True
+        page=lambda key:(get(kept[key].element,"doc_id"),get(kept[key].element,"page_no"))
+        new_pages={page(k) for k in new}-{page(k) for k in wave_start_kept}
+        return bool(new_pages) and rate>=value(settings,"verify_min_keep_rate")
     # At most one split recovery for schema failures; after a failure no new calls, paid results still used.
     recovery_used=False;stopped=False
     verified_element_ids=set();budget_denied_batches=[]
     batch_index=0
     while batch_index<len(work):
+        if waves and not stopped and work[batch_index][5] is None and id(work[batch_index]) not in split_items:
+            if not worth_another_wave():
+                report["stopped_early"]=True
+                break
+            wave_start_kept=set(kept);wave_start_seen=report["elements_seen"]
+            run_wave(work[batch_index:batch_index+value(settings,"verify_next_wave")])
         batch,local,spans,payload,limit,raw=work[batch_index];batch_index+=1
         if fast and any(ev.relevance=='direct' and ev.fact_value for ev in kept.values()):
             report["bounded_candidates_not_verified"]+=sum(len(w[0]) for w in work[batch_index-1:])
@@ -219,7 +241,9 @@ def verify_elements(llm,store,plan,query,middle,settings,*,ctx=None,_allow_task_
             if getattr(raw,"code",None)=="MODEL_SCHEMA" and not recovery_used and len(batch)>1:
                 recovery_used=True
                 half=len(batch)//2
-                work[batch_index:batch_index]=[build(batch[:half]),build(batch[half:])]
+                parts=[build(batch[:half]),build(batch[half:])]
+                split_items.update(id(part) for part in parts)
+                work[batch_index:batch_index]=parts
                 report["split_retries"]=1
                 continue
             if not stopped:

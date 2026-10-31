@@ -259,13 +259,13 @@ def test_writers_and_limits_scale_with_the_facts(tmp_path):
         seen.append((p["role"],len(p["facts"]),p["max_statements"]))
         return {"status":"answered","sections":[{"heading":"Speed","statements":[
             {"kind":"finding","text":f["text"],"cites":[{"evidence_id":f["evidence_id"],"span_ids":[f["span_id"]]}]} for f in p["facts"]]}]}
-    draft,_,_=big_case(tmp_path,30,respond)
+    draft,_,_=big_case(tmp_path,30,respond,facts_per_writer=12)
     findings=[x for x in seen if x[0]=="findings"]
     assert len(findings)==3 and sum(x[1] for x in findings)==30 and all(x[1]<=12 for x in findings)
     assert all(x[2]>=x[1]+2 for x in findings)  # statement room always covers the writer's facts
     assert len(draft.claims)==30 and {f for c in draft.claims for f in c.fact_ids}=={f"F{i+1}" for i in range(30)}
     # More facts than max_answer_writers can take at 12 each: each writer's share grows, no fact is dropped.
-    seen.clear();draft,_,_=big_case(tmp_path,50,respond,max_answer_writers=2)
+    seen.clear();draft,_,_=big_case(tmp_path,50,respond,max_answer_writers=2,facts_per_writer=12)
     assert sorted(x[1] for x in seen if x[0]=="findings")==[25,25] and len(draft.claims)==50
 
 
@@ -309,7 +309,7 @@ def test_check_batches_scale_and_a_failed_batch_is_split(tmp_path):
         sizes.append(len(p["claims"]))
         if len(p["claims"])>8: raise ValueError("verdict list cut off")
         return {"verdicts":[{"claim_id":c["claim_id"],"verdict":"supported"} for c in p["claims"]]}
-    checked,report=verify_answer(FakeLLM(respond),AnswerDraft(claims,"answered"),numbered,settings(tmp_path))
+    checked,report=verify_answer(FakeLLM(respond),AnswerDraft(claims,"answered"),numbered,settings(tmp_path,claims_per_check=12))
     assert sizes[:3]==[12,12,6] and report["accepted"]==30 and not checked.limitations
 
 
