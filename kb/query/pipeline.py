@@ -17,7 +17,7 @@ BUDGET_TEXT="Not answered: the query budget ran out before any source evidence c
 
 STEP_NAMES=["query_planning","routing_guard","candidate_pages","page_survey","element_retrieval",
             "element_triage","element_verification","answer_generation","answer_verification","citation_render"]
-DESCRIPTIONS=["Compile query obligations and explicit scopes","Guard document identity and reporting period",
+DESCRIPTIONS=["Compile query obligations and explicit scopes","Guard document identity and period or version",
               "Find scoped source pages and independent lexical matches","Survey finite page cards with visible omissions",
               "Recover exact source elements and dependencies","Order bounded verification work with local relevance scores",
               "Verify source-visible evidence against obligations","Select complementary evidence and draft supported claims",

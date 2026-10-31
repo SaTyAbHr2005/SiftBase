@@ -87,8 +87,8 @@ def bind_results(tasks, raw, numbered, spans):
         if task['operation'] in ('compare', 'reconcile'):
             varying = row.get('varying_field')
             # Variation must be requested in the literal query anchor, not invented by a writer.
-            allowed = {'period': r'year|period|over time', 'entity': r'entit|compan|bank|between',
-                       'metric': r'metric|ratio|reconcil'}
+            allowed = {'period': r'year|period|over time', 'entity': r'entit|compan|organi[sz]|between|versus|\bvs\b',
+                       'metric': r'metric|measure|ratio|reconcil'}
             varying = varying if varying in allowed and re.search(allowed[varying], task['query_anchor'], re.I) else None
             missing = [k for k in task['required_fields'] if len(bindings) < 2 or any(not b['scope'][k] for b in bindings)]
             mismatched = [k for k in task['required_fields'] if k != varying and

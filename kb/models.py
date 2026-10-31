@@ -58,6 +58,7 @@ class DocCard:
     identifiers: list[str] = field(default_factory=list)
     sibling_group: str | None = None
     navigation: dict = field(default_factory=dict)
+    metadata_provenance: dict = field(default_factory=dict)  # field name -> "source" when read from the document
 
 
 @dataclass
