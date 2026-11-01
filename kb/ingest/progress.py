@@ -3,7 +3,7 @@ import shutil
 import sys
 import time
 
-WIDTH = 20
+WIDTH = 30
 
 
 def no_progress(step: str, done: int, total: int) -> None:
@@ -39,16 +39,16 @@ class ProgressBar:
         if not self._live and percent // 5 == self._logged:
             return
         self._logged = percent // 5
-        filled = int(share * WIDTH)
         spent = now - self._step_started
         left = _clock(spent / done * (total - done)) + " left" if 0 < done < total else ""
-        line = (f"{step} [{'#' * filled}{'-' * (WIDTH - filled)}] {percent:3d}% {done:,}/{total:,}"
-                f" | {_clock(now - self._started)} so far" + (f" | about {left}" if left else ""))
-        if self._live:  # one screen row, or the redraw wraps and stacks up
-            columns = shutil.get_terminal_size().columns - 1
-            self._stream.write(f"\r{line[:columns]:<{columns}}")
-        else:
-            self._stream.write(line + "\n")
+        numbers = (f"{percent:3d}% {done:,}/{total:,} | {_clock(now - self._started)} so far"
+                   + (f" | about {left}" if left else ""))
+        # On a terminal the line must fit one row or the redraw wraps and stacks up, so the bar gives way to the numbers.
+        columns = shutil.get_terminal_size().columns - 1
+        width = max(5, min(WIDTH, columns - len(step) - len(numbers) - 4)) if self._live else WIDTH
+        filled = int(share * width)
+        line = f"{step} [{'#' * filled}{'-' * (width - filled)}] {numbers}"
+        self._stream.write(f"\r{line[:columns]:<{columns}}" if self._live else line + "\n")
         self._stream.flush()
 
     def finish(self) -> None:
