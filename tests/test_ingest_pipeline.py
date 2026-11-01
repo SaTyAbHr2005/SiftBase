@@ -49,10 +49,10 @@ def test_safe_extract_rejects_traversal(tmp_path, s1):
 
 def test_safe_extract_skips_junk_and_keeps_dup_basenames(tmp_path, s1):
     z = _zip(tmp_path, {"a/x.pdf": b"%PDF-1", "b/x.pdf": b"%PDF-2", "c/y.PDF": b"%PDF-3",
-                        "__MACOSX/a/._x.pdf": b"junk", "notes.txt": b"hi", ".DS_Store": b""})
+                        "__MACOSX/a/._x.pdf": b"junk", "notes.xyz": b"hi", ".DS_Store": b""})
     files, warnings = safe_extract(z, tmp_path / "out", s1)
     assert sorted(d for _, d in files) == ["a/x.pdf", "b/x.pdf", "y.PDF"]
-    assert warnings == ["skipped non-PDF file: notes.txt"]
+    assert warnings == ["skipped unsupported file: notes.xyz"]
     assert all(p.is_file() for p, _ in files)
 
 
@@ -63,7 +63,7 @@ def test_safe_extract_errors(tmp_path, s1):
         safe_extract(bad, tmp_path / "o1", s1)
     assert e.value.code == "INVALID_ARCHIVE"
     with pytest.raises(KBError) as e:
-        safe_extract(_zip(tmp_path, {"a.txt": b"x"}, "n.zip"), tmp_path / "o2", s1)
+        safe_extract(_zip(tmp_path, {"a.xyz": b"x"}, "n.zip"), tmp_path / "o2", s1)
     assert e.value.code == "NO_DOCUMENTS"
     with pytest.raises(KBError) as e:
         safe_extract(_zip(tmp_path, {"a.pdf": b"x" * 100}, "big.zip"), tmp_path / "o3", replace(s1, max_archive_bytes=10))

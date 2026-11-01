@@ -25,6 +25,7 @@ from kb.errors import KBError
 from kb.ingest import cards as cards_mod
 from kb.ingest.cards import (assign_sibling_groups, augment_topics, build_doc_card, build_page_cards,
                              element_embedding_text, page_embedding_text)
+from kb.ingest.convert import SUPPORTED, to_pdf
 from kb.ingest.parse import parse_pages, read_pdf_info, page_source_metadata
 from kb.ingest.segment import mark_boilerplate, segment_document
 from kb.llm import LLM, parallel_map
@@ -32,7 +33,7 @@ from kb.models import BLANK_PAGE_SUMMARY, DocCard, Embedder, PageCard, PageText,
 from kb.registry import Registry
 from kb.store import Store
 
-CACHE_VERSION = 3
+CACHE_VERSION = 4
 
 log = logging.getLogger("kb.ingest")
 COLLECTION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
@@ -46,7 +47,7 @@ def _unsafe(name: str) -> bool:
 
 
 def safe_extract(zip_path: Path, dest: Path, settings: Settings) -> tuple[list[tuple[Path, str]], list[str]]:
-    """Extract PDFs only. Returns ([(path, display_name)], warnings). Unsafe archives are rejected whole."""
+    """Extract every supported file as a PDF. Returns ([(path, display_name)], warnings). Unsafe archives are rejected whole."""
     try:
         zf = zipfile.ZipFile(zip_path)
     except (zipfile.BadZipFile, OSError) as e:
@@ -69,12 +70,12 @@ def safe_extract(zip_path: Path, dest: Path, settings: Settings) -> tuple[list[t
                 continue
             if parts[0] == "__MACOSX" or parts[-1].startswith("."):
                 continue
-            if not name.lower().endswith(".pdf"):
-                warnings.append(f"skipped non-PDF file: {name}")
+            if PurePosixPath(name).suffix.lower() not in SUPPORTED:
+                warnings.append(f"skipped unsupported file: {name}")
                 continue
             pdfs.append((info, name))
         if not pdfs:
-            raise KBError("NO_DOCUMENTS", "The archive contains no PDF files.", 400)
+            raise KBError("NO_DOCUMENTS", "The archive contains no supported documents.", 400)
         basenames = [PurePosixPath(n).name for _, n in pdfs]
         out = []
         dest.mkdir(parents=True, exist_ok=True)
@@ -82,8 +83,20 @@ def safe_extract(zip_path: Path, dest: Path, settings: Settings) -> tuple[list[t
             base = PurePosixPath(name).name
             display = base if basenames.count(base) == 1 else name
             target = dest / f"{i:05d}.pdf"
-            with zf.open(info) as src, open(target, "wb") as dst:
+            suffix = PurePosixPath(name).suffix.lower()
+            raw = target if suffix == ".pdf" else dest / f"{i:05d}{suffix}"
+            with zf.open(info) as src, open(raw, "wb") as dst:
                 shutil.copyfileobj(src, dst, 1 << 20)
+            if raw != target:
+                try:
+                    if not to_pdf(raw, target):
+                        warnings.append(f"no content found in: {name}")
+                        continue
+                except Exception as e:  # noqa: BLE001 - one unreadable file must not fail the collection
+                    warnings.append(f"could not read {name}: {str(e)[:120]}")
+                    continue
+                finally:
+                    raw.unlink(missing_ok=True)
             out.append((target, display))
         return out, warnings
 

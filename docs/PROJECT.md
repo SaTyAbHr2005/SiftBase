@@ -10,7 +10,7 @@ A knowledge base for AI agents that goes beyond top-k RAG, for documents of any 
 
 The API has exactly two routes:
 
-- `POST /index`: multipart `file` (ZIP of PDFs) and `collection_name`. Blocks until the collection is live.
+- `POST /index`: multipart `file` (ZIP of PDF, Word, PowerPoint, Excel, image or text files) and `collection_name`. Blocks until the collection is live.
 - `POST /query`: JSON `{"collection_name": "...", "query": "..."}`. Returns the answer, source chunks with physical pages, a 10-step trace, coverage, usage (including which models answered) and cost.
 
 ## Current status

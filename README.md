@@ -31,7 +31,7 @@ Each call tries the providers in that order and moves on after a rate limit, out
 .venv/bin/python -m scripts.serve --env-file .env --host 127.0.0.1 --port 8000
 ```
 
-POST /index takes multipart `file` (ZIP) and `collection_name`. It blocks until the current ingestion implementation activates the collection. POST /query takes JSON `{"collection_name":"demo","query":"What does the report disclose about capital?"}`. It returns answer, actual source chunks with physical pages, ten four-field trace steps, coverage, resource usage and generation/config identity. Provider failures are HTTP errors; a semantic search miss is separately reported. No public health or documentation routes are added.
+POST /index takes multipart `file` (a ZIP of PDF, DOCX, PPTX, XLSX, image, TXT or MD files) and `collection_name`. It blocks until the current ingestion implementation activates the collection. POST /query takes JSON `{"collection_name":"demo","query":"What does the report disclose about capital?"}`. It returns answer, actual source chunks with physical pages, ten four-field trace steps, coverage, resource usage and generation/config identity. Provider failures are HTTP errors; a semantic search miss is separately reported. No public health or documentation routes are added.
 
 Local indexing through the existing CLI:
 
