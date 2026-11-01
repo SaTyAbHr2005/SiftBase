@@ -256,6 +256,67 @@ def test_a_page_with_no_picture_is_not_read_by_ocr(tmp_path, monkeypatch):
     assert "Should not appear" not in page.markdown and not page.is_ocr
 
 
+def _scan(tmp_path, monkeypatch, footer, replies):
+    """A page holding one picture and a short text layer; the fake OCR gives each reply in turn."""
+    import pymupdf
+    from kb.config import get_settings
+    from kb.ingest import parse
+    pix = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 40, 40), False)
+    pix.clear_with(200)
+    doc = pymupdf.open()
+    page = doc.new_page()
+    page.insert_image(page.rect, stream=pix.tobytes("png"))
+    if footer:
+        page.insert_text((50, 800), footer)
+    path = tmp_path / "scan.pdf"
+    doc.save(path)
+    calls = iter(replies)
+
+    class Engine:
+        def image_to_text(self, png):
+            return next(calls)
+    monkeypatch.setattr(parse, "get_ocr_engine", lambda: Engine())
+    monkeypatch.setattr(parse, "_markdown", lambda doc, idx, *a, **k: {i + 1: "" for i in idx})
+    return parse.parse_pages(path, 1, 1, get_settings(data_dir=tmp_path), True)
+
+
+def test_a_short_text_layer_survives_when_ocr_reads_the_scan(tmp_path, monkeypatch):
+    pages, unreadable = _scan(tmp_path, monkeypatch, "Downloaded 19.08.2026", ["The whole body of the scanned page was read here."])
+    assert "body of the scanned page" in pages[0].markdown and "19.08.2026" in pages[0].markdown and unreadable == 0
+
+
+def test_an_upside_down_scan_is_read_by_turning_it(tmp_path, monkeypatch):
+    pages, unreadable = _scan(tmp_path, monkeypatch, "", ["", "", "Text that only reads when the page is upside down.", ""])
+    assert "only reads when" in pages[0].markdown and unreadable == 0
+
+
+def test_a_scan_nothing_can_read_is_reported_and_not_filled_with_noise_pretending_to_be_text(tmp_path, monkeypatch):
+    pages, unreadable = _scan(tmp_path, monkeypatch, "", ["", "x", "", ""])
+    assert unreadable == 1 and len(pages[0].markdown) <= 1
+
+
+def test_broken_font_text_is_detected_without_flagging_real_languages():
+    from kb.ingest.parse import _is_garbled
+    assert _is_garbled("ƧƵ\x03ǐȲƊƮɐƊɈƵ\x03ƊȁƮ\x03Ɗ\x03IƵǶǶȌɩ\x03wƵǿƦƵȲ\x03ȌǏ\x03ɈǘƵ\x03")
+    for real in (SENTENCE, "कंपनी का राजस्व बढ़ा", "ارتفعت إيرادات الشركة", "公司收入增长了", "Doanh thu của công ty tăng mạnh trong năm nay",
+                 "Ƣu tiên ưu đãi mới ở nước Azərbaycan əhalisi ", "diversification\x03suggests\x03that\x03Indian\x03rice\x03is\x03carving\x03out\x03"):
+        assert not _is_garbled(real * 5)
+
+
+def test_words_glued_by_a_font_with_no_space_stay_as_separate_readable_words():
+    from kb.ingest.parse import _clean, _drop_garbled_lines
+    cleaned = _clean("assurance�and�certification,�and�the�broadening")
+    assert "assurance and certification, and the broadening" in cleaned
+    assert _drop_garbled_lines(cleaned) == cleaned
+
+
+def test_broken_font_lines_are_replaced_by_what_ocr_reads(tmp_path, monkeypatch):
+    from kb.ingest import parse
+    monkeypatch.setattr(parse, "_is_garbled", lambda layer: True)
+    page = _parse(tmp_path, monkeypatch, "Mr. Dugar", "Mr. Dugar\nƧƵ ǐȲƊƮɐƊɈƵ ƊȁƮ IƵǶǶȌɩ", ocr="He is a Commerce graduate and a Fellow", regions=False)
+    assert "Commerce graduate" in page.markdown and "Mr. Dugar" in page.markdown and "ǐȲƊƮɐƊɈƵ" not in page.markdown
+
+
 def test_comments_and_form_values_are_kept(tmp_path, monkeypatch):
     import pymupdf
     from kb.config import get_settings

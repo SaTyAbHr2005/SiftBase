@@ -55,12 +55,17 @@ def test_outline_and_toc_titles(tmp_path, settings):
 def test_image_only_page_uses_ocr(tmp_path, settings, monkeypatch):
     pdf = make_pdf(tmp_path / "i.pdf", [LONG, "CAPITAL BUFFER"], image_only_pages={1})
     _blank_image_page(monkeypatch)
-    stub = StubOCR()
-    monkeypatch.setattr(parse, "get_ocr_engine", lambda: stub)
+    class Stub:
+        calls = 0
+
+        def image_to_text(self, png):
+            Stub.calls += 1
+            return "THE WHOLE SCANNED PAGE WAS READ"
+    monkeypatch.setattr(parse, "get_ocr_engine", lambda: Stub())
     doc = parse_pdf(pdf, settings)
-    assert doc.pages[1].is_ocr and doc.pages[1].markdown == "OCR TEXT"
+    assert doc.pages[1].is_ocr and doc.pages[1].markdown == "THE WHOLE SCANNED PAGE WAS READ"
     assert not doc.pages[0].is_ocr
-    assert stub.calls == 1 and doc.ocr_unavailable_pages == 0
+    assert Stub.calls == 1 and doc.ocr_unavailable_pages == 0
 
 
 def test_image_only_page_without_engine(tmp_path, settings, monkeypatch):

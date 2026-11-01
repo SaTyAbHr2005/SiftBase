@@ -50,7 +50,7 @@ def read_pdf_info(path: Path) -> tuple[str, int, list[tuple[int, str, int]], dic
 
 
 def _clean(md: str) -> str:
-    return _IMAGE_LINK.sub("", md or "").strip()
+    return _GLUED.sub(" ", _IMAGE_LINK.sub("", md or "")).strip()
 
 
 def _markdown(doc, idx: list[int], settings: Settings, name: str, drop_margins: bool) -> dict[int, str]:
@@ -75,6 +75,10 @@ _MAX_RENDER_SIDE = 4000  # pixels: a hostile or huge page must not exhaust memor
 _MAX_PICTURES_PER_PAGE = 8
 _VECTOR_HEAVY = 150  # drawing operations on a page before it counts as a chart or diagram
 _GARBLED = re.compile(r"\(cid:\d+\)|�")
+_LETTERS = re.compile(r"[^\W\d_]{3,}")
+_GLUED = re.compile(r"(?<!�)�(?!�)")  # a font whose space has no character map joins real words together
+_MIN_UNMAPPED_WORDS = 5
+_MIN_SCAN_WORDS = 5  # fewer than this from a whole scanned page is noise or a blank page, not a reading of it
 
 
 def _words(text: str) -> list[str]:
@@ -142,9 +146,44 @@ def _picture_regions(page) -> list:
     return sorted(rects, key=lambda r: -r.get_area())[:_MAX_PICTURES_PER_PAGE]
 
 
-def _read_region(engine, page, rect, dpi: int) -> str:
-    dpi = max(1, min(dpi, int(_MAX_RENDER_SIDE * 72 / max(rect.width, rect.height, 1))))  # PyMuPDF needs a whole number
-    return _clean(engine.image_to_text(page.get_pixmap(dpi=dpi, clip=rect).tobytes("png")))
+def _read_region(engine, page, rect, dpi: int, turn: int = 0) -> str:
+    zoom = min(dpi, _MAX_RENDER_SIDE * 72 / max(rect.width, rect.height, 1)) / 72
+    return _clean(engine.image_to_text(page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom).prerotate(turn), clip=rect).tobytes("png")))
+
+
+def _read_scan(engine, page, dpi: int) -> str:
+    """A scan can be sideways or upside down, so when upright finds almost nothing the other turns are tried."""
+    best = _read_region(engine, page, page.rect, dpi)
+    if len(_words(best)) >= _MIN_SCAN_WORDS:
+        return best
+    return max([best] + [_read_region(engine, page, page.rect, dpi, turn) for turn in (90, 180, 270)],
+               key=lambda text: len(_words(text)))
+
+
+def _unmapped_share(text: str) -> float:
+    """Share of letters in the rarely used Latin Extended-B and IPA blocks, where broken font maps land."""
+    letters = [c for c in text if c.isalpha()]
+    return sum("ƀ" <= c <= "ʯ" for c in letters) / max(len(letters), 1)
+
+
+def _unmapped_words(text: str) -> list[str]:
+    """Words made mostly of those letters. Languages that use the blocks mix them with ordinary letters instead."""
+    return [word for word in _LETTERS.findall(text) if _unmapped_share(word) > 0.5]
+
+
+def _is_garbled(layer: str) -> bool:
+    """A font without a usable character map gives text that looks fine on the page and reads as nonsense."""
+    return len(_GARBLED.findall(layer)) > 5 or len(_unmapped_words(layer)) >= _MIN_UNMAPPED_WORDS
+
+
+def _is_garbled_line(line: str) -> bool:
+    words = _LETTERS.findall(line)
+    return ("(cid:" in line or line.count("�") > 0.3 * len(line)
+            or (bool(words) and 2 * len(_unmapped_words(line)) >= len(words)))
+
+
+def _drop_garbled_lines(md: str) -> str:
+    return "\n".join(line for line in md.splitlines() if not _is_garbled_line(line))
 
 
 def _add_new_lines(md: str, ocr_text: str) -> str:
@@ -206,7 +245,7 @@ def parse_pages(path: Path, start: int, end: int, settings: Settings, use_ocr: b
             scanned = exact is None and len(layer.strip()) < settings.min_text_chars and bool(page.get_image_info())
             pictures = _picture_regions(page)
             vector_heavy = exact is None and len(page.get_drawings()) > _VECTOR_HEAVY
-            garbled = len(_GARBLED.findall(layer)) > 5
+            garbled = _is_garbled(layer)
             ocr_words = 0
             if use_ocr and (scanned or pictures or vector_heavy or garbled):
                 engine = get_ocr_engine()
@@ -214,16 +253,23 @@ def parse_pages(path: Path, start: int, end: int, settings: Settings, use_ocr: b
                     if engine is None:
                         unavailable += scanned
                     elif scanned:
-                        text = _read_region(engine, page, page.rect, settings.ocr_dpi)
+                        text = _read_scan(engine, page, settings.ocr_dpi)
                         if len(text) > len(md):
-                            md, is_ocr = text, True
+                            # A short text layer (a footer, say) and any comments stay alongside what OCR read.
+                            md = _recover_missing_text(page, text)[0]
+                            md = "\n\n".join([md] + extras)
+                            is_ocr = True
                             ocr_words = len(_words(text))
-                        elif not md:
+                        if len(_words(text)) < _MIN_SCAN_WORDS:
                             unavailable += 1
                     else:
                         before = md
-                        for rect in [page.rect] if vector_heavy or garbled else pictures:
-                            md = _add_new_lines(md, _read_region(engine, page, rect, settings.ocr_dpi))
+                        texts = [_read_region(engine, page, rect, settings.ocr_dpi)
+                                 for rect in ([page.rect] if vector_heavy or garbled else pictures)]
+                        if garbled and any(texts):
+                            md = _drop_garbled_lines(md)
+                        for text in texts:
+                            md = _add_new_lines(md, text)
                         is_ocr = md != before
                         ocr_words = len(_words(md)) - len(_words(before))
                 except Exception as e:  # noqa: BLE001 - one unreadable picture must not lose the rest of the page

@@ -35,7 +35,7 @@ from kb.models import BLANK_PAGE_SUMMARY, DocCard, Embedder, PageCard, PageText,
 from kb.registry import Registry
 from kb.store import Store
 
-CACHE_VERSION = 5
+CACHE_VERSION = 7
 
 log = logging.getLogger("kb.ingest")
 COLLECTION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
@@ -297,6 +297,8 @@ def index_collection(zip_path: Path, collection_name: str, *, settings: Settings
                     continue
                 seen[d.doc_id] = d.file_name
                 docs.append(d)
+            warnings.extend(f"{d.file_name}: {d.ocr_unavailable_pages} scanned pages gave no readable text"
+                            for d in docs if d.ocr_unavailable_pages)
             stage("parsed", documents=len(docs), pages=sum(d.page_count for d in docs), cache_hits=parse_hits)
 
             from kb.ingest.parse import doc_id_for
