@@ -1,5 +1,9 @@
 from dataclasses import replace
+import json
+import pytest
+from kb.query.errors import BudgetExceeded
 from kb.query.plan import plan_query,guard_routing,query_hints
+from kb.query.runtime import QueryRuntime
 from kb.query.types import QueryPlan,Aspect
 from .helpers import Card,MemoryStore,FakeLLM,settings
 
@@ -48,6 +52,39 @@ def test_planner_failure_falls_back_and_preserves_negation(tmp_path):
     plan=plan_query(FakeLLM(fail),"Which loans are not eligible?",[],settings(tmp_path))
     assert "not" in plan.aspects[0].keywords
     assert "planner_failed" in plan.notes
+
+
+def test_large_catalogue_still_reaches_the_planner_with_the_relevant_document(tmp_path):
+    cards=[Card(f"d{i}",f"d{i}.pdf",topics=["topic "*200]) for i in range(60)]
+    store=MemoryStore({c.doc_id:["capital ratio" if c.doc_id=="d59" else "weather report"] for c in cards},cards)
+    cfg=settings(tmp_path)
+    ctx=QueryRuntime(cfg,FakeLLM())
+    plan=plan_query(ctx.llm,"capital ratio",cards,cfg,ctx=ctx,store=store)
+    assert "planner_failed" not in plan.notes
+    sent=json.loads((ctx.path/"call_1_input.json").read_text(encoding="utf-8"))["payload"]["catalogue"]
+    assert any('"d59"' in line for line in sent) and len(sent)<len(cards)
+
+
+def test_planner_time_is_capped_and_verification_always_gets_time(tmp_path):
+    class Timed(FakeLLM):
+        deadlines=[]
+        def scoped(self): return self
+        def set_request_deadline(self,deadline): self.deadlines.append(deadline)
+    cfg=settings(tmp_path,query_deadline_s=30,plan_deadline_s=10,verify_min_s=15)
+    ctx=QueryRuntime(cfg,Timed())
+    ctx.call("plan","system",{"query":"q"},100)
+    assert Timed.deadlines[-1]==pytest.approx(ctx.started+10)
+    ctx.deadline=ctx.started-1
+    with pytest.raises(BudgetExceeded):
+        ctx.check("verify")
+    ctx.allow_verification()
+    ctx.check("verify")
+
+
+def test_planner_failure_records_why(tmp_path):
+    def fail(n,p): raise RuntimeError("offline")
+    plan=plan_query(FakeLLM(fail),"capital ratio",[],settings(tmp_path))
+    assert "RuntimeError" in plan.notes
 
 
 def test_obligation_overflow_is_visible(tmp_path):

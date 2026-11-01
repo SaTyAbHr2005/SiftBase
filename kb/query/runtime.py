@@ -49,6 +49,13 @@ class QueryRuntime:
         if time.monotonic() >= self.started + share * (self.deadline - self.started):
             raise BudgetExceeded("Query deadline exhausted")
 
+    def _plan_deadline(self):
+        return min(self.deadline, self.started + value(self.settings, "plan_deadline_s"))
+
+    def allow_verification(self):
+        """An answer needs checked evidence, so slow earlier stages cannot leave verification with no time."""
+        self.deadline = max(self.deadline, time.monotonic() + value(self.settings, "verify_min_s"))
+
     def save(self, name, data):
         path = self.path / (name + ".json")
         path.write_text(json.dumps(plain(data), ensure_ascii=False, indent=2)+"\n", encoding="utf-8")
@@ -180,7 +187,7 @@ class QueryRuntime:
                 if hasattr(llm, "set_request_deadline"):
                     # The answer and claim check are never cut by the query deadline: losing them discards paid evidence.
                     grace = max(FINAL_GRACE_S, 15 + max_tokens / FINAL_TOKENS_PER_S)
-                    llm.set_request_deadline(max(self.deadline, time.monotonic() + grace) if name in FINAL else self.deadline)
+                    llm.set_request_deadline(max(self.deadline, time.monotonic() + grace) if name in FINAL else self._plan_deadline() if name == "plan" else self.deadline)
                 result = llm.complete_json(job["system"], job["user"], name=name, max_tokens=max_tokens)
                 if not isinstance(result, dict):
                     raise QueryError("MODEL_SCHEMA", "Expected a JSON object", 503)

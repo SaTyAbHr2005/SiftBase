@@ -76,9 +76,18 @@ def test_query_past_its_deadline_returns_a_response_not_an_error(tmp_path):
         import time
         if n=="plan":time.sleep(0.2)
         return FakeLLM.default(n,p)
-    result=run(tmp_path,llm=FakeLLM(respond),query_deadline_s=0.1)
+    result=run(tmp_path,llm=FakeLLM(respond),query_deadline_s=0.1,verify_min_s=0)
     assert result["status"]=="no_answer" and len(result["trace"])==10
     assert "No evidence verified before the verification budget was exhausted" in result["coverage"]["limitations"]
+
+
+def test_slow_planner_still_leaves_verification_time_for_an_answer(tmp_path):
+    def respond(n,p):
+        import time
+        if n=="plan":time.sleep(0.2)
+        return FakeLLM.default(n,p)
+    result=run(tmp_path,llm=FakeLLM(respond),query_deadline_s=0.1)
+    assert result["status"]=="answered"
 
 
 def test_verify_call_cut_off_by_the_deadline_is_not_reported_as_a_provider_failure(tmp_path):
@@ -87,7 +96,7 @@ def test_verify_call_cut_off_by_the_deadline_is_not_reported_as_a_provider_failu
         if n=="verify":
             time.sleep(0.25);raise RuntimeError("read timed out")
         return FakeLLM.default(n,p)
-    result=run(tmp_path,llm=FakeLLM(respond),query_deadline_s=0.2)
+    result=run(tmp_path,llm=FakeLLM(respond),query_deadline_s=0.2,verify_min_s=0)
     assert result["status"]=="no_answer"
     step=next(s for s in result["trace"] if s["step_name"]=="element_verification")["output"]
     assert step["failed_batches"]==0 and "Verification stopped after a provider/schema failure" not in step["limitations"]

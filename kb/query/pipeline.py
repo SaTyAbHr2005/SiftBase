@@ -72,7 +72,7 @@ def answer_query(collection,query,*,store,generation_id,settings,llm,embedder=No
                     plan=QueryPlan("analytical",[Aspect("a1",query,terms(query))],list(cards))
                     out.update(skipped=True,reason="baseline control",obligations=plain(plan.aspects))
                 else:
-                    plan=plan_query(ctx.llm,query,list(cards.values()),settings,ctx=ctx)
+                    plan=plan_query(ctx.llm,query,list(cards.values()),settings,ctx=ctx,store=store)
                     out.update(intent=plan.intent,obligations=plain(plan.aspects),tasks=plan.tasks,notes=plan.notes,limitations=plan.limitations)
             with ctx.stage(STEP_NAMES[1],DESCRIPTIONS[1],{"planned_doc_ids":plan.doc_ids}) as out:
                 current_stage=1
@@ -135,6 +135,7 @@ def answer_query(collection,query,*,store,generation_id,settings,llm,embedder=No
                     evidence=[Evidence(c.element,c.aspect_ids,"baseline relevance only","baseline",c.ce_score) for c in middle[:30]]
                     out.update(skipped=True,reason="baseline control",evidence_count=len(evidence))
                 elif middle:
+                    ctx.allow_verification()
                     evidence,report=verify_elements(ctx.llm,store,plan,query,middle,settings,ctx=ctx)
                     out.update(report);limits.extend(report["limitations"])
                     counts["raw_fragments_verified"]=report["elements_seen"]

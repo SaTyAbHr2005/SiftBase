@@ -98,15 +98,28 @@ def _call_many(llm,ctx,name,system,payloads,max_tokens):
     return out
 
 
-def plan_query(llm, query, cards, settings, *, ctx=None):
+def fit_catalogue(store, query, cards, settings):
+    """The most relevant document cards that fit the planner's input, so a large collection cannot starve the planner."""
+    room=value(settings,"plan_catalogue_bytes")
+    # ponytail: keyword ranking only, so a document worded differently from the query can miss the cut; rank with page vectors if that shows up.
+    ranked=prefilter_cards(store,query,cards,len(cards)) if store else cards
+    lines=[]
+    for card in ranked:
+        line=card_line(card);size=len(compact(line).encode())
+        if size<=room:
+            lines.append(line);room-=size
+    return lines
+
+
+def plan_query(llm, query, cards, settings, *, ctx=None, store=None):
     hints=query_hints(query,cards)
     fallback=Aspect("a1",query,terms(query)[:16])
     try:
-        raw=_call(llm,ctx,"plan",PLAN_SYSTEM,{"query":query,"hints":hints,"catalogue":[card_line(c) for c in cards]},3000)
+        raw=_call(llm,ctx,"plan",PLAN_SYSTEM,{"query":query,"hints":hints,"catalogue":fit_catalogue(store,query,cards,settings)},3000)
         if not isinstance(raw,dict):
             raise ValueError("planner schema")
-    except Exception:  # incl. BudgetExceeded from an oversized catalogue: plan from the query itself, never fail
-        return QueryPlan("exhaustive" if re.search(r"\b(all|every|exhaustive)\b",query,re.I) else "analytical",[fallback],[],notes="planner_failed; source search remains required")
+    except Exception as exc:  # plan from the query itself, never fail, but say why
+        return QueryPlan("exhaustive" if re.search(r"\b(all|every|exhaustive)\b",query,re.I) else "analytical",[fallback],[],notes=f"planner_failed ({type(exc).__name__}); source search remains required")
     intent=raw.get("intent","analytical")
     if not isinstance(intent,str):
         intent="analytical"
