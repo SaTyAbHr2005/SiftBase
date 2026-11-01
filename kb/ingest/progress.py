@@ -1,8 +1,9 @@
 """Indexing progress: a live bar on a terminal, one line per 5% when the output goes to a log file."""
+import shutil
 import sys
 import time
 
-WIDTH = 30
+WIDTH = 20
 
 
 def no_progress(step: str, done: int, total: int) -> None:
@@ -43,7 +44,11 @@ class ProgressBar:
         left = _clock(spent / done * (total - done)) + " left" if 0 < done < total else ""
         line = (f"{step} [{'#' * filled}{'-' * (WIDTH - filled)}] {percent:3d}% {done:,}/{total:,}"
                 f" | {_clock(now - self._started)} so far" + (f" | about {left}" if left else ""))
-        self._stream.write(f"\r{line:<110}" if self._live else line + "\n")
+        if self._live:  # one screen row, or the redraw wraps and stacks up
+            columns = shutil.get_terminal_size().columns - 1
+            self._stream.write(f"\r{line[:columns]:<{columns}}")
+        else:
+            self._stream.write(line + "\n")
         self._stream.flush()
 
     def finish(self) -> None:

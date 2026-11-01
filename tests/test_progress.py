@@ -25,6 +25,14 @@ def test_terminal_bar_redraws_one_line_and_shows_time_left():
     assert "left" not in text.rsplit("\r", 1)[1]
 
 
+def test_terminal_bar_stays_on_one_row_of_a_narrow_terminal(monkeypatch):
+    monkeypatch.setenv("COLUMNS", "80")
+    out = _Terminal()
+    ProgressBar(out, _clock([0, 0, 1933]))("1/7 Reading pages", 2094, 6998)
+    text = out.getvalue()
+    assert len(text) == 80 and text.rstrip().endswith("left")
+
+
 def test_log_file_gets_a_line_per_five_percent_not_per_update():
     out = io.StringIO()
     bar = ProgressBar(out, _clock(range(1002)))
