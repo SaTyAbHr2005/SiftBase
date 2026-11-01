@@ -82,6 +82,26 @@ def _recover_missing_text(page, md: str) -> str:
     return "\n\n".join(([md] if md else []) + lost)
 
 
+OCR_IMAGE_COVERAGE = 0.25  # share of a page covered by pictures before a text page is also read by OCR
+
+
+def _image_coverage(page) -> float:
+    area = page.rect.get_area() or 1.0
+    return sum(pymupdf.Rect(i["bbox"]).get_area() for i in page.get_image_info()) / area
+
+
+def _add_new_lines(md: str, ocr_text: str) -> str:
+    """OCR lines are short labels and figures, so keep each line with two or more words or any number not already on the page."""
+    have = set(tokens(md))
+    new = []
+    for line in ocr_text.splitlines():
+        words = tokens(line)
+        unseen = [w for w in words if w not in have]
+        if len(unseen) >= max(1, 0.6 * len(words)) and (len(words) >= 2 or any(c.isdigit() for c in line)):
+            new.append(line.strip())
+    return "\n\n".join(([md] if md else []) + (["\n".join(new)] if new else []))
+
+
 def page_source_metadata(page,page_count,markdown):
     links=[int(link["page"])+1 for link in page.get_links()
            if link.get("kind")==pymupdf.LINK_GOTO and isinstance(link.get("page"),int) and 0<=link["page"]<page_count]
@@ -113,7 +133,17 @@ def parse_pages(path: Path, start: int, end: int, settings: Settings, use_ocr: b
             page = doc[page_no - 1]
             md = _recover_missing_text(page, _clean(md_by_page.get(page_no, "")))
             is_ocr = False
-            if use_ocr and len(page.get_text().strip()) < settings.min_text_chars and page.get_image_info():
+            if use_ocr and len(page.get_text().strip()) >= settings.min_text_chars and _image_coverage(page) >= OCR_IMAGE_COVERAGE:
+                # Text inside a large picture (infographic, pasted table) has no text layer: read it and keep what is new.
+                engine = get_ocr_engine()
+                try:
+                    merged = _add_new_lines(md, _clean(engine.image_to_text(page.get_pixmap(dpi=settings.ocr_dpi).tobytes("png")))) if engine else md
+                except Exception as e:
+                    log.warning("OCR failed on %s p%d: %s", path.name, page_no, e)
+                    merged = md
+                is_ocr = merged != md
+                md = merged
+            elif use_ocr and len(page.get_text().strip()) < settings.min_text_chars and page.get_image_info():
                 engine = get_ocr_engine()
                 text = ""
                 if engine is not None:

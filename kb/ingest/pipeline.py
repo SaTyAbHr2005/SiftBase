@@ -32,7 +32,7 @@ from kb.models import BLANK_PAGE_SUMMARY, DocCard, Embedder, PageCard, PageText,
 from kb.registry import Registry
 from kb.store import Store
 
-CACHE_VERSION = 2
+CACHE_VERSION = 3
 
 log = logging.getLogger("kb.ingest")
 COLLECTION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")

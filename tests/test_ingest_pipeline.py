@@ -185,3 +185,21 @@ def test_text_the_markdown_converter_drops_is_recovered(tmp_path, monkeypatch):
     monkeypatch.setattr(parse, "_markdown", lambda doc, idx, *a, **k: {i + 1: sentence for i in idx})
     pages, _ = parse.parse_pages(path, 1, 1, get_settings(data_dir=tmp_path), False)
     assert pages[0].markdown.count("eleven crore rupees") == 1
+
+
+def test_text_inside_a_large_picture_on_a_text_page_is_read(tmp_path, monkeypatch):
+    from kb.config import get_settings
+    from kb.ingest import parse
+    from kb.testing import make_pdf
+    path = make_pdf(tmp_path / "a.pdf", ["A normal paragraph of page text about the annual results of the company."])
+    class Engine:
+        def image_to_text(self, png):
+            return "Credit rating Baa1\nnormal paragraph of page text\n42"
+    monkeypatch.setattr(parse, "get_ocr_engine", lambda: Engine())
+    monkeypatch.setattr(parse, "_image_coverage", lambda page: 0.5)
+    pages, _ = parse.parse_pages(path, 1, 1, get_settings(data_dir=tmp_path), True)
+    assert "Credit rating Baa1" in pages[0].markdown and "\n42" in pages[0].markdown and pages[0].is_ocr
+    assert pages[0].markdown.count("normal paragraph") == 1
+    monkeypatch.setattr(parse, "_image_coverage", lambda page: 0.1)
+    pages, _ = parse.parse_pages(path, 1, 1, get_settings(data_dir=tmp_path), True)
+    assert "Baa1" not in pages[0].markdown
