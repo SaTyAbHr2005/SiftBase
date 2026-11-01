@@ -96,7 +96,8 @@ def _blocks(md: str, stack: list[tuple[int, str]], md_base: int) -> list[_Block]
             pending.append(lines[0])
             continue
         # Noise is dropped before headings attach, so a heading goes to the next real block.
-        if _is_noise(lines):
+        # A table of only figures is data, often the continuation of a table from the previous page.
+        if _is_noise(lines) and not (kind == "table" and any(c.isdigit() for ln in lines for c in ln)):
             continue
         blocks.append(_Block(kind, pending + lines, _path(stack), stack[-1][1] if stack else None, n_heads=len(pending)))
         pending = []
@@ -174,6 +175,22 @@ def _split_table(b: _Block) -> list[str]:
     return out
 
 
+def _cells(row: str) -> list[str]:
+    return [c.replace("<br>", " ").strip() for c in row.strip().strip("|").split("|")]
+
+
+def _table_shape(block: _Block) -> dict | None:
+    rows = [ln for ln in block.lines if ln.lstrip().startswith("|")]
+    return {"columns": len(_cells(rows[0])), "header": _cells(rows[0])} if rows else None
+
+
+def _continuation_note(previous: dict, shape: dict) -> str:
+    """A table's next page often has no heading of its own, so its rows would lose their meaning."""
+    named = [c for c in previous["header"] if c and not re.fullmatch(r"Col\d+", c)]
+    columns = f"; columns: {' | '.join(previous['header'])}" if named and previous["header"] != shape["header"] else ""
+    return f"Table continued from page {previous['page']}{columns}"
+
+
 def segment_document(doc: ParsedDoc) -> tuple[list[Element], dict[int, str]]:
     by_page: dict[int, list[tuple[int, str]]] = defaultdict(list)
     for level, title, page in doc.outline:
@@ -183,6 +200,7 @@ def segment_document(doc: ParsedDoc) -> tuple[list[Element], dict[int, str]]:
     outline_stack: list[tuple[int, str]] = []
     elements: list[Element] = []
     sections: dict[int, str] = {}
+    open_table = None  # the table ending the previous page, which this page may continue
     for page in sorted(doc.pages, key=lambda p: p.page_no):
         for level, title in by_page.get(page.page_no, []):
             if title:
@@ -193,7 +211,18 @@ def segment_document(doc: ParsedDoc) -> tuple[list[Element], dict[int, str]]:
             md_base = stack[-1][0] if stack else 0
         else:
             stack, md_base = outline_stack, 0
-        blocks = _merge(_blocks(page.markdown or "", stack, md_base))
+        raw = _blocks(page.markdown or "", stack, md_base)
+        current = _table_shape(raw[-1]) if raw and raw[-1].kind == "table" else None
+        if raw and open_table and open_table["page"] == page.page_no - 1 and raw[0].kind == "table" and not raw[0].n_heads:
+            shape = _table_shape(raw[0])
+            if shape and shape["columns"] == open_table["columns"]:
+                raw[0].lines.insert(0, _continuation_note(open_table, shape))
+                raw[0].n_heads += 1
+                # A table running over several pages keeps the headings of its first page.
+                if len(raw) == 1 and current:
+                    current = {**current, "header": open_table["header"]}
+        open_table = {**current, "page": page.page_no} if current else None
+        blocks = _merge(raw)
         idx = 0
         for b in blocks:
             pieces = _split_table(b) if b.kind == "table" else _split_text(b.text)

@@ -113,3 +113,40 @@ def test_real_infosys_segmentation(settings):
                       "boilerplate": sum("boilerplate" in e.flags for e in els)}))
     assert 250 <= median <= 900
     assert any("Sundaram" in e.text for e in els if e.page_no == 108)
+
+
+def _pages(*markdowns):
+    from kb.models import PageText, ParsedDoc
+    return ParsedDoc(doc_id="d", file_name="d.pdf", page_count=len(markdowns), outline=[], pdf_metadata={},
+                     pages=[PageText(page_no=i + 1, markdown=m, is_ocr=False, toc_titles=[]) for i, m in enumerate(markdowns)])
+
+
+FIRST = "|Year|Revenue|Profit|\n|---|---|---|\n|2023|10|1|"
+NEXT = "|2024|12|2|\n|---|---|---|\n|2025|14|3|"
+
+
+def test_table_continuing_on_the_next_page_keeps_its_column_names():
+    elements, _ = segment_document(_pages(FIRST, NEXT, NEXT))
+    assert "Table continued from page 1; columns: Year | Revenue | Profit" in elements[1].text
+    # A third page still gets the headings from the first page, and pages stay exact.
+    assert "Table continued from page 2; columns: Year | Revenue | Profit" in elements[2].text
+    assert [e.page_no for e in elements] == [1, 2, 3] and "|2025|14|3|" in elements[2].text
+    assert "continued" not in elements[0].text
+
+
+def test_unrelated_tables_are_not_treated_as_continuations():
+    other = "|A|B|\n|---|---|\n|1|2|"
+    text = "A full sentence of ordinary text that sits between the two tables on this page here, long enough to stand alone as a block."
+    for pages in ((FIRST, other), (FIRST, "# Next heading\n" + NEXT), (FIRST + "\n\n" + text, NEXT), (FIRST, text, NEXT)):
+        elements, _ = segment_document(_pages(*pages))
+        assert not any("continued" in e.text for e in elements)
+
+
+def test_repeated_header_row_is_noted_without_repeating_columns():
+    elements, _ = segment_document(_pages(FIRST, FIRST))
+    assert "Table continued from page 1" in elements[1].text and "columns:" not in elements[1].text
+
+
+def test_a_table_of_only_figures_is_kept_but_a_lone_page_number_is_not():
+    elements, _ = segment_document(_pages("|12|40|\n|---|---|\n|13|55|", "7"))
+    assert [e.page_no for e in elements] == [1] and "|13|55|" in elements[0].text
