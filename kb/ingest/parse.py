@@ -143,7 +143,7 @@ def _picture_regions(page) -> list:
 
 
 def _read_region(engine, page, rect, dpi: int) -> str:
-    dpi = min(dpi, _MAX_RENDER_SIDE * 72 / max(rect.width, rect.height, 1))
+    dpi = max(1, min(dpi, int(_MAX_RENDER_SIDE * 72 / max(rect.width, rect.height, 1))))  # PyMuPDF needs a whole number
     return _clean(engine.image_to_text(page.get_pixmap(dpi=dpi, clip=rect).tobytes("png")))
 
 

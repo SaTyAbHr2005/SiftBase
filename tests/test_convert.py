@@ -190,6 +190,16 @@ def test_archive_converts_other_formats_keeps_names_and_warns_on_failures(tmp_pa
         safe_extract(tmp_path / "bad.zip", tmp_path / "o2", get_settings(data_dir=tmp_path))
 
 
+def test_very_large_page_is_scaled_and_still_read_by_ocr():
+    from kb.ingest import parse
+    class Engine:
+        def image_to_text(self, png):
+            return "Label on a poster page"
+    with pymupdf.open() as doc:
+        page = doc.new_page(width=3000, height=3000)
+        assert parse._read_region(Engine(), page, page.rect, 200) == "Label on a poster page"
+
+
 class _Reply:
     status_code = 200
     def __init__(self, text): self.text = text
