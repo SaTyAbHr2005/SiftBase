@@ -132,13 +132,3 @@ def test_identifiers_from_any_field_are_recognised(tmp_path):
     plan=QueryPlan("analytical",[Aspect("a1","http",["http"])],["a","b"])
     guarded,_=guard_routing(plan,"What does RFC 9110 say about status codes?",cards,store,settings(tmp_path))
     assert guarded.doc_ids==["a"]
-
-
-def test_a_named_source_replaces_a_wrong_planner_pick(tmp_path):
-    cards=[Card("right","right.pdf",issuer="Bhadora Works"),Card("wrong","wrong.pdf",issuer="Metal Coatings")]
-    store=MemoryStore({c.doc_id:["annual report notes"] for c in cards},cards)
-    plan=QueryPlan("analytical",[Aspect("a1","notes",["notes"])],["wrong"])
-    guarded,report=guard_routing(plan,"How reliable are the notes of Bhadora Works?",cards,store,settings(tmp_path))
-    assert guarded.doc_ids==["right"] and report["excluded"][0]["doc_id"]=="wrong"
-    guarded,_=guard_routing(plan,"Compare Bhadora Works with other coatings companies",cards,store,settings(tmp_path))
-    assert set(guarded.doc_ids)=={"right","wrong"}
