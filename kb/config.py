@@ -44,6 +44,7 @@ class Settings:
     llm_mode: str = "live"                     # env KB_LLM_MODE: "live" | "dryrun" (no network, estimated cost)
     llm_cache: bool = True                     # env KB_LLM_CACHE=0 disables the response cache (data/llm_cache.sqlite)
     page_cards_mode: str = "extractive"        # env KB_PAGE_CARDS: "extractive" ($0, default) | "llm" (~$1.75 per 7k pages)
+    vision_pages: int = 20                     # env KB_VISION_PAGES: new chart summaries per index run; 0 turns them off
     budget_usd: float | None = None            # env KB_BUDGET_USD: hard cap on total spend recorded in the ledger
     spend_ledger: Path | None = None           # env KB_SPEND_LEDGER; default data_dir / "spend.jsonl"
     data_dir: Path = Path("data")
@@ -109,6 +110,7 @@ _ENV = {
     "KB_EMBED_ELEMENTS": ("embed_elements", lambda v: v.strip().lower() in ("1", "true", "yes")),
     "KB_BUDGET_USD": ("budget_usd", float),
     "KB_LLM_MODE": ("llm_mode", lambda v: v.strip().lower()),
+    "KB_VISION_PAGES": ("vision_pages", int),
     "KB_PARSE_WORKERS": ("parse_workers", int),
     "MONGODB_URI": ("mongodb_uri", str),
     "MONGODB_DB": ("mongodb_db", str),

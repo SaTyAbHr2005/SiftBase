@@ -65,9 +65,9 @@ def test_markdown_headings_refine_page_only_with_outline():
     assert sections == {1: "Notes > Term loans", 2: "Notes"}
 
 
-def test_page_number_noise_dropped():
+def test_symbol_only_lines_are_dropped_but_a_number_is_kept():
     els, _ = segment_document(_doc([f"12\n\n---\n\n{PARA}"]))
-    assert len(els) == 1 and els[0].text == PARA
+    assert len(els) == 1 and els[0].text.startswith("12") and PARA in els[0].text and "---" not in els[0].text
 
 
 def test_short_blocks_merge_and_table_gets_heading_caption():
@@ -147,6 +147,28 @@ def test_repeated_header_row_is_noted_without_repeating_columns():
     assert "Table continued from page 1" in elements[1].text and "columns:" not in elements[1].text
 
 
-def test_a_table_of_only_figures_is_kept_but_a_lone_page_number_is_not():
-    elements, _ = segment_document(_pages("|12|40|\n|---|---|\n|13|55|", "7"))
-    assert [e.page_no for e in elements] == [1] and "|13|55|" in elements[0].text
+def test_figures_trailing_headings_and_short_lines_all_survive_segmentation():
+    from kb.ingest.segment import extraction_report
+    doc = _pages("|12|40|\n|---|---|\n|13|55|", "Some text here\n\n7", "# Final heading of the page", "45\n60\n75")
+    elements, sections = segment_document(doc)
+    text = " ".join(e.text for e in elements)
+    assert "|13|55|" in text and "Final heading" in text and "60" in text
+    report = extraction_report([doc], [(elements, sections)])
+    assert report["missing_words"] == 0 and report["coverage"] == 1.0
+
+
+def test_extraction_report_names_pages_that_lost_words():
+    from kb.ingest.segment import extraction_report
+    doc = _pages("Alpha beta gamma.")
+    report = extraction_report([doc], [([], {})])
+    assert report["missing_words"] == 3 and report["pages_with_missing_words"] == [{"document": "d.pdf", "page": 1, "missing_words": 3}]
+
+
+def test_running_header_does_not_break_table_continuation():
+    elements, _ = segment_document(_pages(FIRST + "\n\nCompany Report", "Company Report\n\n" + NEXT))
+    assert any("Table continued from page 1; columns: Year | Revenue | Profit" in e.text for e in elements)
+
+
+def test_two_column_tables_on_adjacent_pages_are_only_a_suggestion():
+    elements, _ = segment_document(_pages("|Name|Value|\n|---|---|\n|a|1|", "|b|2|\n|---|---|\n|c|3|"))
+    assert "Table may continue from page 1" in elements[1].text

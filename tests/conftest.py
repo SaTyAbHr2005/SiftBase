@@ -12,6 +12,7 @@ for _key in ("LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_HOST", "KB_
 # One fake provider by default, so a test's stubbed requests.post is what answers.
 os.environ["KB_LLM_PROVIDERS"] = "groq"
 os.environ["GROQ_API_KEY"] = "test"
+os.environ["KB_VISION_PAGES"] = "0"  # tests never send page images anywhere
 
 from kb.config import get_settings  # noqa: E402
 

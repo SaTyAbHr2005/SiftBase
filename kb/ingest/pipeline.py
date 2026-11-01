@@ -27,13 +27,13 @@ from kb.ingest.cards import (assign_sibling_groups, augment_topics, build_doc_ca
                              element_embedding_text, page_embedding_text)
 from kb.ingest.convert import SUPPORTED, to_pdf
 from kb.ingest.parse import parse_pages, read_pdf_info, page_source_metadata
-from kb.ingest.segment import mark_boilerplate, segment_document
+from kb.ingest.segment import extraction_report, mark_boilerplate, segment_document
 from kb.llm import LLM, parallel_map
 from kb.models import BLANK_PAGE_SUMMARY, DocCard, Embedder, PageCard, PageText, ParsedDoc
 from kb.registry import Registry
 from kb.store import Store
 
-CACHE_VERSION = 4
+CACHE_VERSION = 5
 
 log = logging.getLogger("kb.ingest")
 COLLECTION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
@@ -119,7 +119,7 @@ def _fingerprints(settings: Settings, use_ocr: bool) -> dict[str, str]:
                  "prompts": [cards_mod.DOC_CARD_SYSTEM, cards_mod.DOC_CARD_USER_TEMPLATE,
                              cards_mod.PAGE_CARD_SYSTEM, cards_mod.PAGE_CARD_USER_TEMPLATE]})
     emb = _fp({"cards": cards, "model": settings.embed_model, "max_chars": settings.embed_max_chars})
-    return {"parse": parse, "cards": cards, "emb": emb}
+    return {"vision": "1", "parse": parse, "cards": cards, "emb": emb}
 
 
 class _Cache:
@@ -259,12 +259,18 @@ def index_collection(zip_path: Path, collection_name: str, *, settings: Settings
                 docs.append(d)
             stage("parsed", documents=len(docs), pages=sum(d.page_count for d in docs), cache_hits=parse_hits)
 
+            from kb.ingest.parse import doc_id_for
+            from kb.ingest.vision import add_visual_descriptions
+            visuals = add_visual_descriptions(docs, {doc_id_for(p): str(p) for p, _ in files}, cache, settings.vision_pages)
+            stage("visuals", **visuals)
+
             segmented = []
             for d in docs:
                 elements, sections = segment_document(d)
                 mark_boilerplate(elements, d.page_count, settings)
                 segmented.append((elements, sections))
-            stage("segmented", elements=sum(len(e) for e, _ in segmented))
+            extraction = {**extraction_report(docs, segmented), **visuals}
+            stage("segmented", elements=sum(len(e) for e, _ in segmented), coverage=extraction["coverage"])
 
             # Cards: cached per document (raw doc card + page cards), only when every LLM call for it succeeded.
             cards: list[DocCard | None] = [None] * len(docs)
@@ -341,6 +347,7 @@ def index_collection(zip_path: Path, collection_name: str, *, settings: Settings
                 "status": "ready", "collection_name": collection_name, "generation_id": gen_id,
                 "documents": len(docs), "pages": sum(d.page_count for d in docs),
                 "elements": sum(len(e) for e, _ in segmented),
+                "extraction": extraction,
                 "ocr_pages": sum(p.is_ocr for d in docs for p in d.pages),
                 "ocr_unavailable_pages": sum(d.ocr_unavailable_pages for d in docs),
                 "warnings": warnings, "llm_usage": asdict(llm.usage),

@@ -173,33 +173,87 @@ def test_process_pool_parse(tmp_path, settings):
         store.close()
 
 
+def _parse(tmp_path, monkeypatch, text, markdown, *, ocr=None, regions=None):
+    from kb.config import get_settings
+    from kb.ingest import parse
+    from kb.testing import make_pdf
+    path = make_pdf(tmp_path / "a.pdf", [text])
+    monkeypatch.setattr(parse, "_markdown", lambda doc, idx, *a, **k: {i + 1: markdown for i in idx})
+    if ocr is not None:
+        class Engine:
+            def image_to_text(self, png):
+                return ocr
+        monkeypatch.setattr(parse, "get_ocr_engine", lambda: Engine())
+        monkeypatch.setattr(parse, "_picture_regions", lambda page: [page.rect] if regions else [])
+    pages, _ = parse.parse_pages(path, 1, 1, get_settings(data_dir=tmp_path), ocr is not None)
+    return pages[0]
+
+
+SENTENCE = "The total income during the year under review increased to eleven crore rupees overall."
+
+
 def test_text_the_markdown_converter_drops_is_recovered(tmp_path, monkeypatch):
-    from kb.config import get_settings
-    from kb.ingest import parse
-    from kb.testing import make_pdf
-    sentence = "The total income during the year under review increased to eleven crore rupees overall."
-    path = make_pdf(tmp_path / "a.pdf", [sentence])
-    monkeypatch.setattr(parse, "_markdown", lambda doc, idx, *a, **k: {i + 1: "" for i in idx})
-    pages, _ = parse.parse_pages(path, 1, 1, get_settings(data_dir=tmp_path), False)
-    assert "eleven crore rupees" in pages[0].markdown
-    monkeypatch.setattr(parse, "_markdown", lambda doc, idx, *a, **k: {i + 1: sentence for i in idx})
-    pages, _ = parse.parse_pages(path, 1, 1, get_settings(data_dir=tmp_path), False)
-    assert pages[0].markdown.count("eleven crore rupees") == 1
+    page = _parse(tmp_path, monkeypatch, SENTENCE, "")
+    assert "eleven crore rupees" in page.markdown and page.metadata["recovered_words"] > 0
 
 
-def test_text_inside_a_large_picture_on_a_text_page_is_read(tmp_path, monkeypatch):
+def test_a_word_already_kept_is_not_added_twice(tmp_path, monkeypatch):
+    page = _parse(tmp_path, monkeypatch, SENTENCE, SENTENCE)
+    assert page.markdown.count("eleven crore rupees") == 1 and page.metadata["recovered_words"] == 0
+
+
+def test_even_a_single_lost_word_comes_back(tmp_path, monkeypatch):
+    page = _parse(tmp_path, monkeypatch, "Net 42", "")
+    assert "Net" in page.markdown and "42" in page.markdown
+
+
+def test_a_repeated_word_lost_once_comes_back(tmp_path, monkeypatch):
+    from kb.ingest.parse import _words
+    page = _parse(tmp_path, monkeypatch, "Total 10 Total 10", "Total 10")
+    assert _words(page.markdown).count("total") >= 2
+
+
+def test_every_text_layer_word_reaches_the_page(tmp_path, monkeypatch):
+    from kb.ingest.parse import _words
+    page = _parse(tmp_path, monkeypatch, SENTENCE, "The total")
+    assert set(_words(SENTENCE)) <= set(_words(page.markdown))
+
+
+def test_text_inside_a_picture_on_a_text_page_is_read(tmp_path, monkeypatch):
+    page = _parse(tmp_path, monkeypatch, SENTENCE, SENTENCE, ocr="Credit rating Baa1\nthe total income during the year\n42", regions=True)
+    assert "Text in image or figure:" in page.markdown and "Credit rating Baa1" in page.markdown and "\n42" in page.markdown
+    assert page.is_ocr and page.metadata["visual"] and page.markdown.count("total income") == 1
+
+
+def test_a_page_with_no_picture_is_not_read_by_ocr(tmp_path, monkeypatch):
+    page = _parse(tmp_path, monkeypatch, SENTENCE, SENTENCE, ocr="Should not appear", regions=False)
+    assert "Should not appear" not in page.markdown and not page.is_ocr
+
+
+def test_comments_and_form_values_are_kept(tmp_path, monkeypatch):
+    import pymupdf
     from kb.config import get_settings
     from kb.ingest import parse
-    from kb.testing import make_pdf
-    path = make_pdf(tmp_path / "a.pdf", ["A normal paragraph of page text about the annual results of the company."])
-    class Engine:
-        def image_to_text(self, png):
-            return "Credit rating Baa1\nnormal paragraph of page text\n42"
-    monkeypatch.setattr(parse, "get_ocr_engine", lambda: Engine())
-    monkeypatch.setattr(parse, "_image_coverage", lambda page: 0.5)
-    pages, _ = parse.parse_pages(path, 1, 1, get_settings(data_dir=tmp_path), True)
-    assert "Credit rating Baa1" in pages[0].markdown and "\n42" in pages[0].markdown and pages[0].is_ocr
-    assert pages[0].markdown.count("normal paragraph") == 1
-    monkeypatch.setattr(parse, "_image_coverage", lambda page: 0.1)
-    pages, _ = parse.parse_pages(path, 1, 1, get_settings(data_dir=tmp_path), True)
-    assert "Baa1" not in pages[0].markdown
+    path = tmp_path / "f.pdf"
+    doc = pymupdf.open()
+    page = doc.new_page()
+    page.add_text_annot((50, 50), "Reviewer note about the rate")
+    field = pymupdf.Widget()
+    field.field_name, field.field_type, field.field_value = "amount", pymupdf.PDF_WIDGET_TYPE_TEXT, "1500"
+    field.rect = pymupdf.Rect(100, 100, 300, 130)
+    page.add_widget(field)
+    doc.save(path)
+    pages, _ = parse.parse_pages(path, 1, 1, get_settings(data_dir=tmp_path), False)
+    assert "Reviewer note about the rate" in pages[0].markdown and "1500" in pages[0].markdown
+
+
+def test_index_summary_reports_extraction_coverage(tmp_path):
+    from kb.config import get_settings
+    from kb.ingest.pipeline import index_collection
+    from kb.llm import FakeLLM
+    from kb.testing import HashEmbedder
+    settings = get_settings(data_dir=tmp_path / "data")
+    z = _zip(tmp_path, {"a.pdf": _pdf_bytes(tmp_path, ["Alpha bank capital ratio was 14.2 percent in FY2025."])})
+    out = index_collection(z, "c1", settings=settings, llm=FakeLLM(lambda n, s, u: {}), embedder=HashEmbedder(), use_ocr=False)
+    assert out["extraction"]["coverage"] == 1.0 and out["extraction"]["missing_words"] == 0 and out["extraction"]["source_words"] > 0
+    assert out["extraction"]["visual_pages_pending"] == 0

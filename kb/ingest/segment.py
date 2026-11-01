@@ -19,7 +19,6 @@ MAX_LEVELS = 4
 MAX_TITLE = 80
 
 _HEADING = re.compile(r"^(#{1,6})\s+(.+)$")
-_NOISE = re.compile(r"[\s|\-_\d]")
 _SENTENCE_END = re.compile(r"(?<=[.;:])\s+")
 _TABLE_SEP = re.compile(r"^\|[\s:\-|]+\|?$")
 
@@ -50,10 +49,6 @@ def _push(stack: list[tuple[int, str]], level: int, title: str) -> None:
 
 def _path(stack: list[tuple[int, str]]) -> str:
     return " > ".join(t[:MAX_TITLE] for _, t in stack[:MAX_LEVELS])
-
-
-def _is_noise(lines: list[str]) -> bool:
-    return len(_NOISE.sub("", "".join(lines))) < 3
 
 
 def _raw_items(md: str) -> list[tuple[str, list[str]]]:
@@ -96,12 +91,14 @@ def _blocks(md: str, stack: list[tuple[int, str]], md_base: int) -> list[_Block]
             pending.append(lines[0])
             continue
         # Noise is dropped before headings attach, so a heading goes to the next real block.
-        # A table of only figures is data, often the continuation of a table from the previous page.
-        if _is_noise(lines) and not (kind == "table" and any(c.isdigit() for ln in lines for c in ln)):
+        # Only blocks with no letter or digit at all are noise: a table or line of figures is data.
+        if not any(c.isalnum() for ln in lines for c in ln):
             continue
         blocks.append(_Block(kind, pending + lines, _path(stack), stack[-1][1] if stack else None, n_heads=len(pending)))
         pending = []
-    return blocks  # a trailing heading (pending) is dropped
+    if pending:  # a heading ending the page is still text from the document
+        blocks.append(_Block("text", pending, _path(stack), stack[-1][1] if stack else None, n_heads=len(pending)))
+    return blocks
 
 
 def _merge(blocks: list[_Block]) -> list[_Block]:
@@ -175,6 +172,39 @@ def _split_table(b: _Block) -> list[str]:
     return out
 
 
+def _running_line(block: _Block) -> bool:
+    return block.kind == "text" and not block.n_heads and len(block.text) < MERGE_BELOW
+
+
+def extraction_report(docs: list[ParsedDoc], segmented: list) -> dict:
+    """Words each page had against words that reached its index entries, so any loss is visible instead of silent."""
+    from collections import Counter
+    word = re.compile(r"[^\W_]+", re.UNICODE)
+    page_words = indexed = missing = recovered = text_layer = ocr = 0
+    flagged, pages_ocr = [], 0
+    for doc, (elements, _) in zip(docs, segmented):
+        by_page = defaultdict(Counter)
+        for e in elements:
+            by_page[e.page_no].update(word.findall(e.text.lower()))
+        for page in doc.pages:
+            have = Counter(word.findall((page.markdown or "").lower()))
+            lost = sum((have - by_page[page.page_no]).values())
+            page_words += sum(have.values())
+            indexed += sum(have.values()) - lost
+            missing += lost
+            meta = page.metadata or {}
+            text_layer += meta.get("text_layer_words", 0)
+            recovered += meta.get("recovered_words", 0)
+            ocr += meta.get("ocr_words", 0)
+            pages_ocr += bool(page.is_ocr)
+            if lost:
+                flagged.append({"document": doc.file_name, "page": page.page_no, "missing_words": lost})
+    return {"source_words": page_words, "indexed_words": indexed, "missing_words": missing,
+            "coverage": round(indexed / page_words, 6) if page_words else 1.0,
+            "text_layer_words": text_layer, "words_recovered_from_converter_loss": recovered,
+            "words_read_by_ocr": ocr, "pages_with_ocr": pages_ocr, "pages_with_missing_words": flagged[:50]}
+
+
 def _cells(row: str) -> list[str]:
     return [c.replace("<br>", " ").strip() for c in row.strip().strip("|").split("|")]
 
@@ -188,7 +218,9 @@ def _continuation_note(previous: dict, shape: dict) -> str:
     """A table's next page often has no heading of its own, so its rows would lose their meaning."""
     named = [c for c in previous["header"] if c and not re.fullmatch(r"Col\d+", c)]
     columns = f"; columns: {' | '.join(previous['header'])}" if named and previous["header"] != shape["header"] else ""
-    return f"Table continued from page {previous['page']}{columns}"
+    # Two-column key/value tables on adjacent pages are often unrelated, so that case is only a suggestion.
+    lead = "Table continued" if previous["columns"] >= 3 else "Table may continue"
+    return f"{lead} from page {previous['page']}{columns}"
 
 
 def segment_document(doc: ParsedDoc) -> tuple[list[Element], dict[int, str]]:
@@ -212,14 +244,17 @@ def segment_document(doc: ParsedDoc) -> tuple[list[Element], dict[int, str]]:
         else:
             stack, md_base = outline_stack, 0
         raw = _blocks(page.markdown or "", stack, md_base)
-        current = _table_shape(raw[-1]) if raw and raw[-1].kind == "table" else None
-        if raw and open_table and open_table["page"] == page.page_no - 1 and raw[0].kind == "table" and not raw[0].n_heads:
-            shape = _table_shape(raw[0])
+        # A short running header or footer can sit between a table and the page edge.
+        first = next((b for b in raw if not _running_line(b)), None)
+        last = next((b for b in reversed(raw) if not _running_line(b)), None)
+        current = _table_shape(last) if last and last.kind == "table" else None
+        if first and open_table and open_table["page"] == page.page_no - 1 and first.kind == "table" and not first.n_heads:
+            shape = _table_shape(first)
             if shape and shape["columns"] == open_table["columns"]:
-                raw[0].lines.insert(0, _continuation_note(open_table, shape))
-                raw[0].n_heads += 1
+                first.lines.insert(0, _continuation_note(open_table, shape))
+                first.n_heads += 1
                 # A table running over several pages keeps the headings of its first page.
-                if len(raw) == 1 and current:
+                if first is last and current:
                     current = {**current, "header": open_table["header"]}
         open_table = {**current, "page": page.page_no} if current else None
         blocks = _merge(raw)
