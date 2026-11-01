@@ -428,7 +428,8 @@ def verify_elements(llm,store,plan,query,middle,settings,*,ctx=None,_allow_task_
         # Budget stop is not provider failure: answer no_answer (HTTP 200) with the limitation, not a 504.
         report["limitations"].append(NO_EVIDENCE_LIMIT)
     elif report["failed_batches"] and not kept:
-        raise QueryError("PROVIDER_UNAVAILABLE","Evidence verification failed; corpus absence cannot be inferred",503,True)
+        # The providers being down says nothing about the documents: no_answer with the limitation, never "not found".
+        report["limitations"].append(NO_EVIDENCE_LIMIT)
     if report["failed_batches"]:
         report["limitations"].append(f"{report['failed_batches']} verification batches failed")
     if report["invalid_quotes"]:

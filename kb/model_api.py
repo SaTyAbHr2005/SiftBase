@@ -2,7 +2,10 @@
 import re
 from dataclasses import dataclass, field
 
-DEFAULT_CHAIN = "cloudflare,groq,groq:openai/gpt-oss-20b,openrouter,mistral,mistral:ministral-8b-latest,gemini"
+# The judge alone uses Groq's default model, whose daily tokens answering would otherwise use up.
+DEFAULT_CHAIN = "cloudflare,groq:openai/gpt-oss-20b,openrouter,mistral,mistral:ministral-8b-latest,gemini"
+# Writing and claim checks need the strongest models; the small ones only as a last resort.
+WRITER_CHAIN = "cloudflare,groq:qwen/qwen3.8-27b,openrouter,mistral,gemini,mistral:ministral-8b-latest,groq:openai/gpt-oss-20b"
 THINK = re.compile(r"<think>.*?</think>", re.S)
 
 # name -> (chat completions URL, key variable, default model, tokens one call may use in a minute)
@@ -31,10 +34,10 @@ class Provider:
         return f"{self.name}:{self.model}"
 
 
-def build_providers(env):
-    """KB_LLM_PROVIDERS entries are `name` or `name:model`. Entries without their key are left out of the chain."""
+def build_providers(env, variable="KB_LLM_PROVIDERS", default=DEFAULT_CHAIN):
+    """Chain entries are `name` or `name:model`. Entries without their key are left out of the chain."""
     out = []
-    for entry in env.get("KB_LLM_PROVIDERS", DEFAULT_CHAIN).split(","):
+    for entry in env.get(variable, default).split(","):
         name, _, model = entry.strip().partition(":")
         if not name:
             continue

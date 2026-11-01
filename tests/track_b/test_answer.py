@@ -180,6 +180,30 @@ def test_synthesis_statement_gets_exact_source_quotes_and_a_cited_bullet(tmp_pat
     assert answer=="## Capital\n- Capital was USD 12 million in FY2025. [a.pdf p1]\n- Buffers rose to 3 percent. [a.pdf p1]"
 
 
+def test_cited_statement_without_obligation_ids_takes_them_from_its_evidence(tmp_path):
+    store=MemoryStore({"a":["Capital was 12 million USD in FY2025."]})
+    numbered=number_evidence([Evidence(store.elements[0],["a1"])])
+    plan=QueryPlan("analytical",[Aspect("a1","capital",["capital"])],["a"],tasks=[{"id":"T1","text":"assess capital","operation":"assess","obligation_ids":["a1"]}])
+    rows=[{"kind":"finding","text":"Capital was USD 12 million.","cites":[{"evidence_id":"E1","span_ids":["S1"]}]},
+          {"kind":"gap","text":"The 2024 figure is not shown."}]
+    llm=FakeLLM(lambda n,p:{"status":"answered","sections":[{"heading":"Capital","statements":rows}]} if n=="answer" else FakeLLM.default(n,p))
+    draft=generate_answer(llm,"assess capital",plan,numbered,{"a":store.doc("a")},settings(tmp_path,analytical_writer_mode="synthesis"))
+    finding=next(c for c in draft.claims if c.text.startswith("Capital was USD"))
+    assert finding.aspect_ids==["a1"]
+    assert not any(c.kind=="gap" for c in draft.claims)  # a gap cites nothing, so its obligation cannot be worked out
+
+
+def test_statement_citing_evidence_for_two_obligations_is_credited_to_one(tmp_path):
+    store=MemoryStore({"a":["Capital was 12 million USD in FY2025."]})
+    numbered=number_evidence([Evidence(store.elements[0],["a1","a2"])])
+    plan=QueryPlan("analytical",[Aspect("a1","capital",["capital"]),Aspect("a2","liquidity",["liquidity"])],["a"],
+                   tasks=[{"id":"T1","text":"assess capital","operation":"assess","obligation_ids":["a1"]}])
+    rows=[{"kind":"finding","text":"Capital was USD 12 million.","cites":[{"evidence_id":"E1","span_ids":["S1"]}]}]
+    llm=FakeLLM(lambda n,p:{"status":"answered","sections":[{"heading":"Capital","statements":rows}]} if n=="answer" else FakeLLM.default(n,p))
+    draft=generate_answer(llm,"assess capital",plan,numbered,{"a":store.doc("a")},settings(tmp_path,analytical_writer_mode="synthesis"))
+    assert next(c for c in draft.claims if c.text.startswith("Capital was USD")).aspect_ids==["a1"]
+
+
 def test_synthesis_rejects_uncited_or_invented_citations_but_keeps_gaps(tmp_path):
     draft,checked,report,answer=synth(tmp_path,[
         {"kind":"finding","text":"Invented fact.","cites":[]},

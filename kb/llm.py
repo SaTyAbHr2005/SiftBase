@@ -10,6 +10,7 @@ import re
 import sqlite3
 import threading
 import time
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Callable
@@ -155,6 +156,13 @@ def _semaphore(n: int) -> threading.BoundedSemaphore:
 
 _cooldowns: dict[str, float] = {}
 _cooldown_lock = threading.Lock()
+# ponytail: counts this process only, so another process sharing a key can still hit the limit; a 429 still cools it down.
+_token_log: dict[str, deque] = {}
+PACE_WINDOW_S = 60
+PACE_OUTPUT_TOKENS = 400  # share of the output limit counted up front: most calls use far less than they may
+PACE_POLL_S = 0.5
+MAX_PACE_WAIT_S = 60
+WRITER_CALLS = ("answer", "answer_verify")
 RATE_LIMIT_COOLDOWN_S = 60
 SERVER_ERROR_COOLDOWN_S = 30
 BAD_KEY_COOLDOWN_S = 3600
@@ -168,6 +176,21 @@ def _cooling_until(provider) -> float:
 def _cool(provider, seconds: float) -> None:
     with _cooldown_lock:
         _cooldowns[provider.label] = max(_cooldowns.get(provider.label, 0.0), time.monotonic() + seconds)
+
+
+def _take_tokens(provider, tokens: int) -> bool:
+    """Reserve per-minute tokens, or False when this call would go over the provider's limit and be refused."""
+    if provider.max_total is None:
+        return True
+    now = time.monotonic()
+    with _cooldown_lock:
+        log = _token_log.setdefault(provider.label, deque())
+        while log and log[0][0] <= now - PACE_WINDOW_S:
+            log.popleft()
+        if log and sum(n for _, n in log) + tokens > provider.max_total:
+            return False
+        log.append((now, tokens))
+        return True
 
 
 def _http_cooldown(resp) -> float:
@@ -194,9 +217,10 @@ class ChainLLM(LLM):
         s = self.settings
         self.last_usage=None
         self.last_response=None
-        if not s.providers:
+        providers = (s.writer_providers or s.providers) if name in WRITER_CALLS else s.providers
+        if not providers:
             raise LLMError(f"{name}: no model provider configured; add a provider key to .env")
-        for provider in s.providers:
+        for provider in providers:
             out = self._from_cache(provider, name, system, user, max_tokens, json_mode)
             if out is not None:
                 return out
@@ -208,20 +232,29 @@ class ChainLLM(LLM):
         from kb.model_api import fit_output
         self.last_usage={"input_tokens":0,"output_tokens":0,"cost_usd":0.0}  # a rejected request used nothing
         estimate = (len(system) + len(user)) // 4
-        usable = [(p, fit_output(p, estimate, max_tokens)) for p in s.providers]
+        usable = [(p, fit_output(p, estimate, max_tokens)) for p in providers]
         usable = [(p, limit) for p, limit in usable if limit is not None]
         if not usable:
             raise LLMError(f"{name}: about {estimate} input tokens fit no configured provider")
         errors: list[str] = []
         for attempt in range(1, s.llm_max_retries + 1):
-            ready = [(p, limit) for p, limit in usable if _cooling_until(p) <= time.monotonic()]
-            for provider, limit in ready:
-                if getattr(self, "deadline", float("inf")) <= time.monotonic():
-                    raise LLMError(f"{name}: query deadline reached: {'; '.join(errors[-5:])}")
-                try:
-                    return self._attempt(provider, system, user, name, limit, max_tokens, json_mode)
-                except (requests.RequestException, LLMError, ValueError, KeyError, IndexError) as e:
-                    errors.append(f"{provider.label}: {str(e)[:120]}")
+            # With every provider busy, wait for one to free up rather than fail a call that could have run seconds later.
+            for _ in range(int(MAX_PACE_WAIT_S / PACE_POLL_S)):
+                tried = False
+                for provider, limit in usable:
+                    if _cooling_until(provider) > time.monotonic() or not _take_tokens(provider, estimate + min(limit, PACE_OUTPUT_TOKENS)):
+                        continue
+                    tried = True
+                    if getattr(self, "deadline", float("inf")) <= time.monotonic():
+                        raise LLMError(f"{name}: query deadline reached: {'; '.join(errors[-5:])}")
+                    try:
+                        return self._attempt(provider, system, user, name, limit, max_tokens, json_mode)
+                    except (requests.RequestException, LLMError, ValueError, KeyError, IndexError) as e:
+                        errors.append(f"{provider.label}: {str(e)[:120]}")
+                now = time.monotonic()
+                if tried or getattr(self, "deadline", float("inf")) <= now or all(_cooling_until(p) - now > MAX_PACE_WAIT_S for p, _ in usable):
+                    break
+                time.sleep(PACE_POLL_S)
             if attempt < s.llm_max_retries:
                 soonest = min(_cooling_until(p) for p, _ in usable) - time.monotonic()
                 time.sleep(max(soonest, min(30, 2 ** attempt) + random.random()) if soonest <= 30 else 0)

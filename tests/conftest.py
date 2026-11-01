@@ -19,10 +19,12 @@ from kb.config import get_settings  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def clear_provider_cooldowns():
-    from kb.llm import _cooldowns
+    from kb.llm import _cooldowns, _token_log
     _cooldowns.clear()
+    _token_log.clear()
     yield
     _cooldowns.clear()
+    _token_log.clear()
 
 
 @pytest.fixture

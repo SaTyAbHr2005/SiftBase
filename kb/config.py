@@ -31,6 +31,7 @@ def load_dotenv(path: Path | None = None) -> None:
 @dataclass(frozen=True)
 class Settings:
     providers: tuple = ()                      # free-tier fallback order, built from env by kb.model_api.build_providers
+    writer_providers: tuple = ()               # order for writing and claim checks; empty means `providers`
     llm_model: str = "auto"                    # a label: the chain picks the real model for each call
     answer_model: str = ""
     price_input_per_m: float | None = 0.0
@@ -131,8 +132,10 @@ def get_settings(**overrides) -> Settings:
     for env, (name, parse) in _ENV.items():
         if os.environ.get(env) not in (None, ""):
             values[name] = parse(os.environ[env])
-    from kb.model_api import build_providers
+    from kb.model_api import WRITER_CHAIN, build_providers
     values["providers"] = build_providers(os.environ)
+    # Naming one chain with KB_LLM_PROVIDERS keeps every call on it unless writing is given its own.
+    values["writer_providers"] = () if "providers" in overrides else build_providers(os.environ, "KB_WRITER_PROVIDERS", os.environ.get("KB_LLM_PROVIDERS", WRITER_CHAIN))
     values["price_input_per_m"] = _opt_float(os.environ.get("PRICE_INPUT_PER_M"), 0.0)
     values["price_output_per_m"] = _opt_float(os.environ.get("PRICE_OUTPUT_PER_M"), 0.0)
     values["ce_tau_low"] = _opt_float(os.environ.get("CE_TAU_LOW"), None)

@@ -4,7 +4,7 @@ import pytest
 import kb.llm as llm_mod
 from kb.config import get_settings
 from kb.llm import ChainLLM, LLMError
-from kb.model_api import Provider, build_providers, fit_output, request_spec, response_parts
+from kb.model_api import WRITER_CHAIN, Provider, build_providers, fit_output, request_spec, response_parts
 
 A = Provider("a", "https://a.test/chat", "model-a", "key-a")
 B = Provider("b", "https://b.test/chat", "model-b", "key-b")
@@ -81,6 +81,74 @@ def test_rate_limited_provider_is_skipped_until_its_cooldown_ends(tmp_path, post
     replies[A.url] = Reply()
     llm.complete_json("s", "u3", name="plan")
     assert calls[-1] == A.url
+
+
+def test_a_provider_is_not_sent_more_than_its_tokens_per_minute(tmp_path, post, monkeypatch):
+    calls, replies = post
+    now = [1000.0]
+    monkeypatch.setattr(llm_mod.time, "monotonic", lambda: now[0])
+    paced = Provider("p", "https://p.test/chat", "model-p", "key-p", max_total=1000)
+    replies[paced.url], replies[B.url] = Reply(), Reply()
+    llm = chain(tmp_path, paced, B)
+    prompt = "x" * 1600  # about 400 tokens, plus the output share
+    llm.complete_json("s", prompt, name="plan", max_tokens=100)
+    llm.complete_json("s", prompt + "2", name="plan", max_tokens=100)
+    llm.complete_json("s", prompt + "3", name="plan", max_tokens=100)
+    assert calls == [paced.url, paced.url, B.url]  # the third would go over, so no request is wasted on a rate limit
+    now[0] += 61
+    llm.complete_json("s", prompt + "4", name="plan", max_tokens=100)
+    assert calls[-1] == paced.url
+
+
+def test_a_call_waits_for_capacity_instead_of_failing_at_once(tmp_path, post, monkeypatch):
+    calls, replies = post
+    now = [1000.0]
+    monkeypatch.setattr(llm_mod.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(llm_mod.time, "sleep", lambda s: now.__setitem__(0, now[0] + s))
+    replies[A.url] = [Reply(429, headers={"Retry-After": "5"}), Reply()]
+    llm = chain(tmp_path, A)
+    with pytest.raises(LLMError):
+        llm.complete_json("s", "u", name="plan")
+    assert llm.complete_json("s", "u2", name="plan") == {"ok": True}
+    assert now[0] >= 1005
+
+
+def test_a_call_gives_up_waiting_at_the_query_deadline(tmp_path, post, monkeypatch):
+    calls, replies = post
+    now = [1000.0]
+    monkeypatch.setattr(llm_mod.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(llm_mod.time, "sleep", lambda s: now.__setitem__(0, now[0] + s))
+    llm_mod._cool(A, 500)
+    llm = chain(tmp_path, A)
+    llm.deadline = now[0] + 3
+    with pytest.raises(LLMError):
+        llm.complete_json("s", "u", name="plan")
+    assert calls == [] and now[0] <= 1004
+
+
+def test_a_call_does_not_wait_on_a_provider_blocked_for_longer_than_it_would_wait(tmp_path, post, monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(llm_mod.time, "sleep", sleeps.append)
+    llm_mod._cool(A, llm_mod.BAD_KEY_COOLDOWN_S)
+    with pytest.raises(LLMError):
+        chain(tmp_path, A).complete_json("s", "u", name="plan")
+    assert sleeps == []
+
+
+def test_writing_uses_its_own_model_order(tmp_path, post):
+    calls, replies = post
+    replies[A.url], replies[B.url] = Reply(), Reply()
+    llm = chain(tmp_path, A, writer_providers=(B,))
+    llm.complete_json("s", "u", name="verify")
+    llm.complete_json("s", "u", name="answer")
+    llm.complete_json("s", "u2", name="answer_verify")
+    assert calls == [A.url, B.url, B.url]
+
+
+def test_the_judge_model_is_not_in_the_default_answer_chains():
+    env = {"GROQ_API_KEY": "k", "MISTRAL_API_KEY": "m"}
+    labels = [p.label for chain_ in (build_providers(env), build_providers(env, "KB_WRITER_PROVIDERS", WRITER_CHAIN)) for p in chain_]
+    assert "groq:openai/gpt-oss-120b" not in labels and "groq:qwen/qwen3.8-27b" in labels
 
 
 def test_a_rejected_request_does_not_bench_the_provider(tmp_path, post):
@@ -174,7 +242,7 @@ def test_build_providers_keeps_order_and_skips_missing_keys():
 
 def test_default_chain_uses_only_keys_that_exist():
     assert build_providers({}) == ()
-    assert [p.name for p in build_providers({"GEMINI_API_KEY": "m", "GROQ_API_KEY": "g"})] == ["groq", "groq", "gemini"]
+    assert [p.name for p in build_providers({"GEMINI_API_KEY": "m", "GROQ_API_KEY": "g"})] == ["groq", "gemini"]
 
 
 def test_wire_format_is_openai_style_and_turns_thinking_down():

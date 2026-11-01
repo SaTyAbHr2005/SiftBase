@@ -405,8 +405,6 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None):
                     or not isinstance(row.get("text"),str) or not row["text"].strip() or len(row["text"])>1200:
                 reject("malformed_statement");continue
             aids=[a for a in row.get("obligation_ids") or [] if isinstance(a,str) and a in aspect_ids]
-            if plan.tasks and not aids:
-                reject('missing_or_unsupported_obligation_id');continue
             quotes=[];eids=[];cited=set()
             for cite in row.get("cites") or []:
                 eid=cite.get("evidence_id") if isinstance(cite,dict) else None
@@ -422,6 +420,11 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None):
                 quotes,eids=[],[]
             elif not quotes:
                 reject("uncited_statement");continue
+            # Writers often leave the IDs out; what a statement cites says which obligation it serves. Only one is credited:
+            # evidence tagged for several could mark an obligation supported that the statement never addresses.
+            aids=aids or next(([a] for e in eids for a in numbered[e].aspect_ids if a in aspect_ids),[])
+            if plan.tasks and not aids:
+                reject('missing_or_unsupported_obligation_id');continue
             calc=None
             if row["kind"]=="calculation":
                 calc=_synthesis_calculation(row.get("calculation"),spans)

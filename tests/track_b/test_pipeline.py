@@ -33,14 +33,13 @@ def test_no_candidates_no_model_answer_and_all_trace_steps(tmp_path):
     assert "answer" not in [name for name,p in llm.calls]
 
 
-def test_provider_failure_is_not_a_no_answer(tmp_path):
+def test_provider_failure_never_reads_as_not_found_in_the_documents(tmp_path):
     def respond(n,p):
         if n=="verify": raise RuntimeError("provider offline")
         return FakeLLM.default(n,p)
-    with pytest.raises(QueryError,match="verification failed"):
-        run(tmp_path,llm=FakeLLM(respond))
-    failures=list((tmp_path/"runs").glob("*/failure.json"))
-    assert len(failures)==1
+    result=run(tmp_path,llm=FakeLLM(respond))
+    assert result["status"]=="no_answer" and "model providers" in result["answer"] and "No supporting information" not in result["answer"]
+    assert "Verification stopped after a provider/schema failure" in result["coverage"]["limitations"]
 
 
 def test_writer_visible_unused_context_is_returned(tmp_path):
@@ -79,6 +78,23 @@ def test_query_past_its_deadline_returns_a_response_not_an_error(tmp_path):
     result=run(tmp_path,llm=FakeLLM(respond),query_deadline_s=0.1,verify_min_s=0)
     assert result["status"]=="no_answer" and len(result["trace"])==10
     assert "No evidence verified before the verification budget was exhausted" in result["coverage"]["limitations"]
+
+
+def test_every_provider_down_still_returns_a_response(tmp_path):
+    from kb.query.pipeline import BUDGET_TEXT
+    def down(n,p): raise RuntimeError("all rate limited")
+    result=run(tmp_path,llm=FakeLLM(down))
+    assert result["status"]=="no_answer" and result["answer"]==BUDGET_TEXT and len(result["trace"])==10
+
+
+@pytest.mark.parametrize("failing",["answer","answer_verify"])
+def test_answer_step_failure_keeps_the_verified_evidence(tmp_path,failing):
+    def respond(n,p):
+        if n==failing: raise RuntimeError("all rate limited")
+        return FakeLLM.default(n,p)
+    result=run(tmp_path,llm=FakeLLM(respond))
+    assert result["status"]=="partial" and result["chunks"]
+    assert any("could not be" in x for x in result["coverage"]["limitations"])
 
 
 def test_slow_planner_still_leaves_verification_time_for_an_answer(tmp_path):

@@ -13,7 +13,7 @@ from .triage import element_triage
 from .types import QueryPlan, Aspect, Evidence, AnswerDraft, SurveyPick
 from .utils import get, terms, plain, id_for, narrow_factoid
 
-BUDGET_TEXT="Not answered: the query budget ran out before any source evidence could be verified."
+BUDGET_TEXT="Not answered: the model providers or the query budget ran out before any source evidence could be verified."
 
 STEP_NAMES=["query_planning","routing_guard","candidate_pages","page_survey","element_retrieval",
             "element_triage","element_verification","answer_generation","answer_verification","citation_render"]
@@ -158,12 +158,21 @@ def answer_query(collection,query,*,store,generation_id,settings,llm,embedder=No
                 if report["omitted"]:
                     limits.append(f"{report['omitted']} verified fragments omitted from writer context")
                 plan.limitations=list(dict.fromkeys(limits))
-                draft=generate_answer(ctx.llm,query,plan,numbered,cards,settings,ctx=ctx)
+                try:
+                    draft=generate_answer(ctx.llm,query,plan,numbered,cards,settings,ctx=ctx)
+                except Exception as exc:  # the verified evidence is still worth returning
+                    limits.append(f"The answer could not be written ({type(exc).__name__})")
+                    draft=AnswerDraft([],"no_answer",list(plan.limitations))
                 out.update(report,draft_claims=len(draft.claims),writer_source_ids=[get(ev.element,"element_id") for ev in portfolio])
                 ctx.save("writer_context",evidence_block_for_artifact(numbered,cards))
             with ctx.stage(STEP_NAMES[8],DESCRIPTIONS[8],{"claims":len(draft.claims)}) as out:
                 current_stage=8
-                draft,report=verify_answer(ctx.llm,draft,numbered,settings,ctx=ctx,query=query);out.update(report)
+                try:
+                    draft,report=verify_answer(ctx.llm,draft,numbered,settings,ctx=ctx,query=query);out.update(report)
+                except Exception as exc:  # an unchecked claim is never shown; the evidence still is
+                    limits.append(f"The answer could not be checked ({type(exc).__name__})")
+                    draft=AnswerDraft([],"no_answer",list(plan.limitations))
+                    out.update(accepted=0,rejected=0,skipped="claim check failed")
             with ctx.stage(STEP_NAMES[9],DESCRIPTIONS[9],{"accepted_claims":len(draft.claims)}) as out:
                 current_stage=9
                 answer,report=render_verified(draft,numbered,cards);out.update(report)

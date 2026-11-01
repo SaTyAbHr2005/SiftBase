@@ -47,9 +47,9 @@ def test_schema_failure_splits_once_then_stops(tmp_path):
     def fail(name,p):
         calls.append(len(p['elements']))
         raise QueryError('MODEL_SCHEMA','truncated',503)
-    with pytest.raises(QueryError,match='absence cannot be inferred'):
-        verify_elements(FakeLLM(fail),store,plan(),'trials',
-                        [Candidate(e,['a1'],['fts']) for e in store.elements],settings(tmp_path))
+    evidence,report=verify_elements(FakeLLM(fail),store,plan(),'trials',
+                                    [Candidate(e,['a1'],['fts']) for e in store.elements],settings(tmp_path))
+    assert not evidence and "Verification stopped after a provider/schema failure" in report["limitations"]
     assert sorted(calls[:4])==[8,8,8,8] and calls[4:]==[4]  # one parallel round, one split retry, then no new calls
 
 
