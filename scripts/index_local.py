@@ -20,6 +20,7 @@ def main() -> None:
     from kb.config import get_settings
     from kb.embed import get_embedder
     from kb.ingest.pipeline import index_collection
+    from kb.ingest.progress import ProgressBar
     from kb.llm import get_llm
 
     ap = argparse.ArgumentParser()
@@ -42,8 +43,10 @@ def main() -> None:
                         z.write(pdf, pdf.relative_to(src).as_posix())
         else:
             zip_path = src
+        bar = ProgressBar()
         summary = index_collection(zip_path, args.collection, settings=settings, llm=get_llm(settings),
-                                   embedder=get_embedder(settings), use_ocr=not args.no_ocr)
+                                   embedder=get_embedder(settings), use_ocr=not args.no_ocr, progress=bar)
+        bar.finish()
     print(json.dumps(summary, indent=2))
 
 

@@ -173,6 +173,32 @@ def test_process_pool_parse(tmp_path, settings):
         store.close()
 
 
+def test_progress_covers_each_step_and_a_stopped_run_keeps_finished_documents(tmp_path, s1, monkeypatch):
+    import kb.ingest.pipeline as pl
+
+    z = _zip(tmp_path, {"a.pdf": _pdf_bytes(tmp_path, ["Alpha bank capital ratio was 14.2 percent in FY2025."]),
+                        "b.pdf": _pdf_bytes(tmp_path, ["Pump pressure stayed at four bar during the whole test."])})
+    real, calls = pl.parse_pages, []
+
+    def stops_on_second_document(*args, **kwargs):
+        calls.append(1)
+        if len(calls) == 2:
+            raise KeyboardInterrupt
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(pl, "parse_pages", stops_on_second_document)
+    with pytest.raises(KeyboardInterrupt):
+        index_collection(z, "c1", settings=s1, llm=FakeLLM(card_responder), embedder=HashEmbedder(), use_ocr=False)
+    monkeypatch.setattr(pl, "parse_pages", real)
+
+    seen = []
+    out = index_collection(z, "c1", settings=s1, llm=FakeLLM(card_responder), embedder=HashEmbedder(), use_ocr=False,
+                           progress=lambda step, done, total: seen.append((step, done, total)))
+    assert out["cache_hits"]["parse"] == 1
+    assert {s for s, _, _ in seen} >= {pl.PARSE_STEP, pl.SEGMENT_STEP, pl.DOC_CARD_STEP, pl.PAGE_CARD_STEP, pl.EMBED_STEP, pl.SAVE_STEP}
+    assert (pl.PARSE_STEP, 1, 1) in seen and (pl.SAVE_STEP, 2, 2) in seen
+
+
 def _parse(tmp_path, monkeypatch, text, markdown, *, ocr=None, regions=None):
     from kb.config import get_settings
     from kb.ingest import parse

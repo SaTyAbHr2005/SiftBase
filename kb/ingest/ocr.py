@@ -7,6 +7,8 @@ the nearest character boundary (character positions come from RapidOCR's return_
 """
 import functools
 import logging
+import math
+import os
 from typing import Protocol
 
 import numpy as np
@@ -70,7 +72,8 @@ class RapidOCREngine:
     def __init__(self):
         from rapidocr_onnxruntime import RapidOCR
 
-        self._ocr = RapidOCR()
+        # Parse workers share the CPU: uncapped they fight over cores (measured 27% slower with 6 workers on 16 cores).
+        self._ocr = RapidOCR(intra_op_num_threads=max(2, math.ceil((os.cpu_count() or 2) / 6)))
 
     def image_to_text(self, png_bytes: bytes) -> str:
         import cv2

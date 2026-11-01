@@ -14,7 +14,8 @@ import stat
 import threading
 import time
 import zipfile
-from concurrent.futures import ProcessPoolExecutor
+from collections import Counter
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import asdict, replace
 from pathlib import Path, PurePosixPath
 
@@ -27,6 +28,7 @@ from kb.ingest.cards import (assign_sibling_groups, augment_topics, build_doc_ca
                              element_embedding_text, page_embedding_text)
 from kb.ingest.convert import SUPPORTED, to_pdf
 from kb.ingest.parse import parse_pages, read_pdf_info, page_source_metadata
+from kb.ingest.progress import no_progress
 from kb.ingest.segment import extraction_report, mark_boilerplate, segment_document
 from kb.llm import LLM, parallel_map
 from kb.models import BLANK_PAGE_SUMMARY, DocCard, Embedder, PageCard, PageText, ParsedDoc
@@ -38,6 +40,13 @@ CACHE_VERSION = 5
 log = logging.getLogger("kb.ingest")
 COLLECTION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 EMBED_CHUNK = 512
+PARSE_STEP = "1/7 Reading pages"
+VISION_STEP = "2/7 Summarising charts"
+SEGMENT_STEP = "3/7 Checking every word"
+DOC_CARD_STEP = "4/7 Document summaries"
+PAGE_CARD_STEP = "5/7 Page summaries"
+EMBED_STEP = "6/7 Search vectors"
+SAVE_STEP = "7/7 Saving the index"
 
 
 def _unsafe(name: str) -> bool:
@@ -186,7 +195,23 @@ class _CountingLLM:
             raise
 
 
-def _parse_all(files: list[tuple[Path, str]], settings: Settings, use_ocr: bool, cache: _Cache) -> tuple[list[ParsedDoc], int]:
+def _counted(fn, step: str, total: int, progress):
+    """Wrap fn so each finished item moves the progress bar, also when items run in parallel."""
+    lock, done = threading.Lock(), [0]
+    progress(step, 0, total)
+
+    def run(item):
+        try:
+            return fn(item)
+        finally:
+            with lock:
+                done[0] += 1
+                progress(step, done[0], total)
+    return run
+
+
+def _parse_all(files: list[tuple[Path, str]], settings: Settings, use_ocr: bool, cache: _Cache,
+               progress=no_progress) -> tuple[list[ParsedDoc], int]:
     """Returns (docs, parse_cache_hits). Cached documents skip parsing entirely."""
     infos = [(path, display, *read_pdf_info(path)) for path, display in files]
     docs = [ParsedDoc(doc_id, display, count, [], outline, meta) for _, display, doc_id, count, outline, meta in infos]
@@ -207,21 +232,36 @@ def _parse_all(files: list[tuple[Path, str]], settings: Settings, use_ocr: bool,
             todo.append(i)
     jobs = [(i, start, min(start + settings.page_job_size - 1, docs[i].page_count))
             for i in todo for start in range(1, docs[i].page_count + 1, settings.page_job_size)]
+    total_pages = sum(docs[i].page_count for i in todo)
+    jobs_left = Counter(i for i, _, _ in jobs)
+    pages_done = 0
+    progress(PARSE_STEP, 0, total_pages)
+
+    def finish(job: tuple[int, int, int], result: tuple[list[PageText], int]) -> None:
+        # A finished document is saved at once, so a stopped run resumes without reading it again.
+        nonlocal pages_done
+        i, start, end = job
+        docs[i].pages.extend(result[0])
+        docs[i].ocr_unavailable_pages += result[1]
+        jobs_left[i] -= 1
+        if not jobs_left[i]:
+            docs[i].pages.sort(key=lambda p: p.page_no)
+            cache.save_json("parse", docs[i].doc_id, {"pages": [asdict(p) for p in docs[i].pages],
+                                                      "ocr_unavailable": docs[i].ocr_unavailable_pages})
+        pages_done += end - start + 1
+        progress(PARSE_STEP, pages_done, total_pages)
+
     workers = _workers(settings)
     if workers <= 1 or len(jobs) <= 1:
-        results = [parse_pages(infos[i][0], s, e, settings, use_ocr) for i, s, e in jobs]
+        for job in jobs:
+            i, s, e = job
+            finish(job, parse_pages(infos[i][0], s, e, settings, use_ocr))
     else:
         # ponytail: each worker's onnxruntime may use all cores during OCR; fine for <200 OCR pages, cap workers if CPU-bound
         with ProcessPoolExecutor(max_workers=workers) as pool:
-            futures = [pool.submit(parse_pages, infos[i][0], s, e, settings, use_ocr) for i, s, e in jobs]
-            results = [f.result() for f in futures]
-    for (i, _, _), (pages, unavailable) in zip(jobs, results):
-        docs[i].pages.extend(pages)
-        docs[i].ocr_unavailable_pages += unavailable
-    for i in todo:
-        docs[i].pages.sort(key=lambda p: p.page_no)
-        cache.save_json("parse", docs[i].doc_id, {"pages": [asdict(p) for p in docs[i].pages],
-                                                  "ocr_unavailable": docs[i].ocr_unavailable_pages})
+            futures = {pool.submit(parse_pages, infos[job[0]][0], job[1], job[2], settings, use_ocr): job for job in jobs}
+            for future in as_completed(futures):
+                finish(futures[future], future.result())
     return docs, hits
 
 
@@ -231,7 +271,7 @@ def _embed(embedder: Embedder, texts: list[str]) -> np.ndarray:
 
 
 def index_collection(zip_path: Path, collection_name: str, *, settings: Settings, llm: LLM, embedder: Embedder,
-                     use_ocr: bool = True, registry: Registry | None = None) -> dict:
+                     use_ocr: bool = True, registry: Registry | None = None, progress=no_progress) -> dict:
     if not COLLECTION_RE.fullmatch(collection_name or ""):
         raise KBError("INVALID_COLLECTION_NAME", "collection_name must match ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$", 422,
                       details={"collection_name": (collection_name or "")[:100]})
@@ -249,7 +289,7 @@ def index_collection(zip_path: Path, collection_name: str, *, settings: Settings
             stage("extracted", pdfs=len(files))
 
             cache = _Cache(settings, _fingerprints(settings, use_ocr))
-            parsed, parse_hits = _parse_all(files, settings, use_ocr, cache)
+            parsed, parse_hits = _parse_all(files, settings, use_ocr, cache, progress)
             docs, seen = [], {}
             for d in parsed:
                 if d.doc_id in seen:
@@ -261,14 +301,16 @@ def index_collection(zip_path: Path, collection_name: str, *, settings: Settings
 
             from kb.ingest.parse import doc_id_for
             from kb.ingest.vision import add_visual_descriptions
-            visuals = add_visual_descriptions(docs, {doc_id_for(p): str(p) for p, _ in files}, cache, settings.vision_pages)
+            visuals = add_visual_descriptions(docs, {doc_id_for(p): str(p) for p, _ in files}, cache, settings.vision_pages,
+                                              lambda done, total: progress(VISION_STEP, done, total))
             stage("visuals", **visuals)
 
             segmented = []
-            for d in docs:
+            for n, d in enumerate(docs, 1):
                 elements, sections = segment_document(d)
                 mark_boilerplate(elements, d.page_count, settings)
                 segmented.append((elements, sections))
+                progress(SEGMENT_STEP, n, len(docs))
             extraction = {**extraction_report(docs, segmented), **visuals}
             stage("segmented", elements=sum(len(e) for e, _ in segmented), coverage=extraction["coverage"])
 
@@ -282,14 +324,16 @@ def index_collection(zip_path: Path, collection_name: str, *, settings: Settings
                     page_cards[i] = [PageCard(**pc) for pc in cached["page_cards"]]
             misses = [i for i in range(len(docs)) if cards[i] is None]
             counters = {i: _CountingLLM(llm) for i in misses}
-            built = parallel_map(lambda i: build_doc_card(counters[i], docs[i], settings), misses, settings.llm_concurrency)
+            built = parallel_map(_counted(lambda i: build_doc_card(counters[i], docs[i], settings), DOC_CARD_STEP, len(misses), progress),
+                                 misses, settings.llm_concurrency)
             for i, c in zip(misses, built):
                 if isinstance(c, Exception):  # build_doc_card never raises; keep the guard explicit
                     raise c
                 cards[i] = c
             stage("doc_cards", cache_hits=len(docs) - len(misses))
 
-            built = parallel_map(lambda i: build_page_cards(counters[i], docs[i], cards[i], segmented[i][1], settings),
+            built = parallel_map(_counted(lambda i: build_page_cards(counters[i], docs[i], cards[i], segmented[i][1], settings),
+                                          PAGE_CARD_STEP, len(misses), progress),
                                  misses, max(1, settings.llm_concurrency // 2))
             for i, pcs in zip(misses, built):
                 if isinstance(pcs, Exception):  # build_page_cards never raises; keep the guard explicit
@@ -308,7 +352,8 @@ def index_collection(zip_path: Path, collection_name: str, *, settings: Settings
             # Vectors are cached only for documents whose cards are cached (never on top of fallback cards).
             cards_cached = {docs[i].doc_id for i in range(len(docs)) if i not in counters or counters[i].failures == 0}
             page_keys, vec_parts, emb_hits = [], [], 0
-            for c, pcs in zip(cards, page_cards):
+            for n, (c, pcs) in enumerate(zip(cards, page_cards), 1):
+                progress(EMBED_STEP, n - 1, len(cards))
                 live = [pc for pc in pcs if pc.summary != BLANK_PAGE_SUMMARY]
                 page_keys.extend((c.doc_id, pc.page_no) for pc in live)
                 vecs = cache.load_vecs(c.doc_id, len(live)) if c.doc_id in cards_cached else None
@@ -320,6 +365,7 @@ def index_collection(zip_path: Path, collection_name: str, *, settings: Settings
                     emb_hits += 1
                 if len(live):
                     vec_parts.append(vecs)
+            progress(EMBED_STEP, len(cards), len(cards))
             page_vecs = np.vstack(vec_parts) if vec_parts else np.zeros((0, 1), dtype=np.float32)
             el_keys, el_vecs = [], None
             if settings.embed_elements:
@@ -334,8 +380,9 @@ def index_collection(zip_path: Path, collection_name: str, *, settings: Settings
 
             store = Store.create(staging)
             try:
-                for d, c, pcs, (elements, _) in zip(docs, cards, page_cards, segmented):
+                for n, (d, c, pcs, (elements, _)) in enumerate(zip(docs, cards, page_cards, segmented), 1):
                     store.add_document(c, d.pages, pcs, elements)
+                    progress(SAVE_STEP, n, len(docs))
                 if page_keys:
                     store.set_vectors("page", page_keys, page_vecs)
                 if el_keys:

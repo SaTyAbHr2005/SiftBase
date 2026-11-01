@@ -37,7 +37,7 @@ def _describe(provider, png: bytes) -> str:
     return (resp.json()["choices"][0]["message"].get("content") or "").strip()
 
 
-def add_visual_descriptions(docs, paths: dict[str, str], cache, limit: int) -> dict:
+def add_visual_descriptions(docs, paths: dict[str, str], cache, limit: int, progress=lambda done, total: None) -> dict:
     """Append saved or new summaries to pages flagged as visual; returns counts for the extraction report."""
     provider = _provider() if limit else None
     used = described = pending = 0
@@ -56,12 +56,13 @@ def add_visual_descriptions(docs, paths: dict[str, str], cache, limit: int) -> d
                 try:
                     source = source or pymupdf.open(paths[doc.doc_id])
                     target = source[page.page_no - 1]
-                    dpi = min(110, 1600 * 72 / max(target.rect.width, target.rect.height, 1))
+                    dpi = max(1, min(110, int(1600 * 72 / max(target.rect.width, target.rect.height, 1))))
                     if used:
                         time.sleep(PACE_S)
                     saved[key] = _describe(provider, target.get_pixmap(dpi=dpi).tobytes("png"))
                     used += 1
                     changed = True
+                    progress(used, limit)
                 except (requests.RequestException, KeyError, IndexError, ValueError) as e:
                     log.warning("Vision stopped at %s p%d: %s", doc.file_name, page.page_no, type(e).__name__)
                     stopped = True
