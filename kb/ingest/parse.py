@@ -16,6 +16,7 @@ import pymupdf4llm
 from kb.config import Settings
 from kb.ingest.ocr import get_ocr_engine
 from kb.models import PageText, ParsedDoc
+from kb.textutil import tokens
 
 log = logging.getLogger(__name__)
 
@@ -67,6 +68,20 @@ def _markdown(doc, idx: list[int], settings: Settings, name: str, drop_margins: 
 
 
 
+def _recover_missing_text(page, md: str) -> str:
+    """The Markdown converter can drop real text, often text laid over a page image: put back any block it lost."""
+    have = set(tokens(md))
+    lost = []
+    for block in page.get_text("blocks", sort=True):
+        if block[6] != 0:  # image block
+            continue
+        text = " ".join(block[4].split())
+        words = tokens(text)
+        if len(words) >= 6 and sum(w in have for w in words) < 0.6 * len(words):
+            lost.append(text)
+    return "\n\n".join(([md] if md else []) + lost)
+
+
 def page_source_metadata(page,page_count,markdown):
     links=[int(link["page"])+1 for link in page.get_links()
            if link.get("kind")==pymupdf.LINK_GOTO and isinstance(link.get("page"),int) and 0<=link["page"]<page_count]
@@ -96,7 +111,7 @@ def parse_pages(path: Path, start: int, end: int, settings: Settings, use_ocr: b
 
         for page_no in range(start, end + 1):
             page = doc[page_no - 1]
-            md = _clean(md_by_page.get(page_no, ""))
+            md = _recover_missing_text(page, _clean(md_by_page.get(page_no, "")))
             is_ocr = False
             if use_ocr and len(page.get_text().strip()) < settings.min_text_chars and page.get_image_info():
                 engine = get_ocr_engine()

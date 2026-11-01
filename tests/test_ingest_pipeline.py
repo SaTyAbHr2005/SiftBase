@@ -171,3 +171,17 @@ def test_process_pool_parse(tmp_path, settings):
         assert [pc.page_no for pc in store.page_cards(store.docs()[0].doc_id)] == [1, 2, 3, 4, 5]
     finally:
         store.close()
+
+
+def test_text_the_markdown_converter_drops_is_recovered(tmp_path, monkeypatch):
+    from kb.config import get_settings
+    from kb.ingest import parse
+    from kb.testing import make_pdf
+    sentence = "The total income during the year under review increased to eleven crore rupees overall."
+    path = make_pdf(tmp_path / "a.pdf", [sentence])
+    monkeypatch.setattr(parse, "_markdown", lambda doc, idx, *a, **k: {i + 1: "" for i in idx})
+    pages, _ = parse.parse_pages(path, 1, 1, get_settings(data_dir=tmp_path), False)
+    assert "eleven crore rupees" in pages[0].markdown
+    monkeypatch.setattr(parse, "_markdown", lambda doc, idx, *a, **k: {i + 1: sentence for i in idx})
+    pages, _ = parse.parse_pages(path, 1, 1, get_settings(data_dir=tmp_path), False)
+    assert pages[0].markdown.count("eleven crore rupees") == 1
