@@ -165,6 +165,7 @@ MAX_PACE_WAIT_S = 60
 WRITER_CALLS = ("answer", "answer_verify")
 RATE_LIMIT_COOLDOWN_S = 60
 SERVER_ERROR_COOLDOWN_S = 30
+DEADLINE_CUT_COOLDOWN_S = 5
 BAD_KEY_COOLDOWN_S = 3600
 
 
@@ -287,8 +288,11 @@ class ChainLLM(LLM):
                     remaining=min(s.llm_timeout_s,max(0.001,getattr(self,"deadline",time.monotonic()+s.llm_timeout_s)-time.monotonic()))
                     try:
                         resp = requests.post(endpoint, headers=headers, json=payload, timeout=(min(5, remaining), remaining))
-                    except requests.RequestException:
-                        _cool(provider, SERVER_ERROR_COOLDOWN_S)
+                    except requests.RequestException as exc:
+                        # A reply cut off by the query's own deadline may only be slow: a short pause lets the next
+                        # stage retry a working provider while still moving later stages past a hung one.
+                        cut_short = isinstance(exc, requests.ReadTimeout) and remaining < s.llm_timeout_s
+                        _cool(provider, DEADLINE_CUT_COOLDOWN_S if cut_short else SERVER_ERROR_COOLDOWN_S)
                         raise
                 if resp.status_code >= 400:
                     _cool(provider, _http_cooldown(resp))

@@ -10,7 +10,7 @@ class QuerySettings:
     router_max_docs: int = 12
     router_max_cards: int = 120
     plan_catalogue_bytes: int = 12000  # about 3k tokens: small enough for the fast free models
-    plan_deadline_s: float = 10  # after this the query plans from its own words
+    plan_deadline_s: float = 20  # after this the query plans from its own words; Cloudflare planning took up to 8.4 s
     verify_min_s: float = 15  # time verification always gets, however long earlier stages took
     max_obligations: int = 64
     page_selection_mode: str = "local"

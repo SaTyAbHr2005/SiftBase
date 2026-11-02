@@ -61,6 +61,36 @@ def test_any_provider_failure_falls_through_to_the_next(tmp_path, post, failure)
     assert calls == [A.url, B.url] and llm.last_usage["model"] == "b:model-b"
 
 
+def test_a_reply_cut_off_by_the_query_deadline_only_pauses_the_provider(tmp_path, post):
+    _, replies = post
+    replies[A.url] = llm_mod.requests.ReadTimeout("cut short")
+    llm = chain(tmp_path, A)
+    llm.deadline = llm_mod.time.monotonic() + 20
+    with pytest.raises(LLMError):
+        llm.complete_json("s", "u", name="plan")
+    left = llm_mod._cooling_until(A) - llm_mod.time.monotonic()
+    assert 0 < left <= llm_mod.DEADLINE_CUT_COOLDOWN_S
+
+
+def test_a_provider_timing_out_on_its_own_gets_the_full_cooldown(tmp_path, post):
+    _, replies = post
+    replies[A.url] = llm_mod.requests.ReadTimeout("slow")
+    with pytest.raises(LLMError):
+        chain(tmp_path, A).complete_json("s", "u", name="plan")
+    assert llm_mod._cooling_until(A) - llm_mod.time.monotonic() > llm_mod.DEADLINE_CUT_COOLDOWN_S
+
+
+@pytest.mark.parametrize("failure", [llm_mod.requests.ConnectTimeout("no route"), llm_mod.requests.ConnectionError("down")])
+def test_a_provider_that_cannot_be_reached_gets_the_full_cooldown_inside_a_deadline(tmp_path, post, failure):
+    _, replies = post
+    replies[A.url] = failure
+    llm = chain(tmp_path, A)
+    llm.deadline = llm_mod.time.monotonic() + 20
+    with pytest.raises(LLMError):
+        llm.complete_json("s", "u", name="plan")
+    assert llm_mod._cooling_until(A) - llm_mod.time.monotonic() > llm_mod.DEADLINE_CUT_COOLDOWN_S
+
+
 def test_every_provider_failing_is_an_error_naming_them(tmp_path, post):
     _, replies = post
     replies[A.url], replies[B.url] = Reply(429), Reply(503)
