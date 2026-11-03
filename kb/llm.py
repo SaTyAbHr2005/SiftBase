@@ -166,6 +166,7 @@ WRITER_CALLS = ("answer", "answer_verify")
 RATE_LIMIT_COOLDOWN_S = 60
 SERVER_ERROR_COOLDOWN_S = 30
 DEADLINE_CUT_COOLDOWN_S = 5
+PLAN_FIRST_SHARE = 0.6  # of a 20 s planner deadline: 12 s, above the 8.4 s slowest successful Cloudflare plan seen
 BAD_KEY_COOLDOWN_S = 3600
 
 
@@ -242,14 +243,16 @@ class ChainLLM(LLM):
             # With every provider busy, wait for one to free up rather than fail a call that could have run seconds later.
             for _ in range(int(MAX_PACE_WAIT_S / PACE_POLL_S)):
                 tried = False
-                for provider, limit in usable:
+                for i, (provider, limit) in enumerate(usable):
                     if _cooling_until(provider) > time.monotonic() or not _take_tokens(provider, estimate + min(limit, PACE_OUTPUT_TOKENS)):
                         continue
                     tried = True
                     if getattr(self, "deadline", float("inf")) <= time.monotonic():
                         raise LLMError(f"{name}: query deadline reached: {'; '.join(errors[-5:])}")
+                    # A planner stuck on one slow provider would use its whole deadline: keep time for the next one.
+                    share = PLAN_FIRST_SHARE if name == "plan" and i < len(usable) - 1 else 1.0
                     try:
-                        return self._attempt(provider, system, user, name, limit, max_tokens, json_mode)
+                        return self._attempt(provider, system, user, name, limit, max_tokens, json_mode, share)
                     except (requests.RequestException, LLMError, ValueError, KeyError, IndexError) as e:
                         errors.append(f"{provider.label}: {str(e)[:120]}")
                 now = time.monotonic()
@@ -277,7 +280,7 @@ class ChainLLM(LLM):
             self.usage.cache_hits += 1
         return out
 
-    def _attempt(self, provider, system, user, name, limit, max_tokens, json_mode):
+    def _attempt(self, provider, system, user, name, limit, max_tokens, json_mode, share=1.0):
         from kb.model_api import request_spec, response_parts
         s = self.settings
         endpoint,headers,payload=request_spec(provider,system,user,limit,json_mode)
@@ -285,7 +288,7 @@ class ChainLLM(LLM):
         with lf_generation(name, provider.model, {"system": clip(system, 2000), "user": clip(user, 4000)}) as gen:
             try:
                 with _semaphore(s.llm_concurrency):
-                    remaining=min(s.llm_timeout_s,max(0.001,getattr(self,"deadline",time.monotonic()+s.llm_timeout_s)-time.monotonic()))
+                    remaining=min(s.llm_timeout_s,max(0.001,getattr(self,"deadline",time.monotonic()+s.llm_timeout_s)-time.monotonic()))*share
                     try:
                         resp = requests.post(endpoint, headers=headers, json=payload, timeout=(min(5, remaining), remaining))
                     except requests.RequestException as exc:

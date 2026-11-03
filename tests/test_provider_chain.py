@@ -130,6 +130,32 @@ def test_a_provider_is_not_sent_more_than_its_tokens_per_minute(tmp_path, post, 
     assert calls[-1] == paced.url
 
 
+def test_a_slow_planner_provider_leaves_time_for_the_next_one(tmp_path, monkeypatch):
+    waits = []
+
+    def fake(url, headers=None, json=None, timeout=None):
+        waits.append((url, timeout[1]))
+        if url == A.url:
+            raise llm_mod.requests.ReadTimeout("slow")
+        return Reply()
+
+    monkeypatch.setattr(llm_mod.requests, "post", fake)
+    llm = chain(tmp_path, A, B)
+    llm.deadline = llm_mod.time.monotonic() + 20
+    assert llm.complete_json("s", "u", name="plan") == {"ok": True}
+    assert [u for u, _ in waits] == [A.url, B.url] and waits[0][1] <= 20 * llm_mod.PLAN_FIRST_SHARE
+
+
+def test_only_the_planner_splits_its_time_and_the_last_provider_gets_all_of_it(tmp_path, monkeypatch):
+    waits = []
+    monkeypatch.setattr(llm_mod.requests, "post", lambda url, headers=None, json=None, timeout=None: waits.append(timeout[1]) or Reply())
+    for name, providers in (("verify", (A, B)), ("plan", (A,))):
+        llm = chain(tmp_path, *providers)
+        llm.deadline = llm_mod.time.monotonic() + 20
+        llm.complete_json("s", name, name=name)
+    assert all(w > 19 for w in waits)
+
+
 def test_a_call_waits_for_capacity_instead_of_failing_at_once(tmp_path, post, monkeypatch):
     calls, replies = post
     now = [1000.0]
