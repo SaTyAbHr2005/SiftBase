@@ -26,6 +26,27 @@ def flatten_gold_chunks(row):
     return [chunk["content"] for chunk in chunks]
 
 
+# The free judge takes about 7,500 tokens per call, and the official context check sends every chunk in one call,
+# answering about 21 tokens per chunk (reasoning included). Past that its verdict is cut off and the row goes unscored.
+JUDGE_CALL_TOKENS=7500
+VERDICT_TOKENS_PER_CHUNK=25
+ROLE_ORDER={"claim_support":0,"verified_not_in_writer_context":2}
+
+
+def submitted_chunks(query,chunks):
+    """Chunk texts to score: answer support first, then what the writer saw, then the rest, up to one judge call."""
+    out=[]
+    for chunk in sorted(chunks,key=lambda c:ROLE_ORDER.get(c.get("evidence_role"),1)):
+        trial=out+[chunk["content"]]
+        prompt=len(query)+len(json.dumps([{"id":i,"text":t} for i,t in enumerate(trial)],indent=2))+600
+        if prompt//4+VERDICT_TOKENS_PER_CHUNK*len(trial)>JUDGE_CALL_TOKENS:
+            if out:
+                break
+            continue  # a chunk too big to judge even alone must not leave nothing to score
+        out=trial
+    return out
+
+
 def select_rows(rows,ids=None,split=None,groups=None):
     allowed=set(ids) if ids is not None else set(split) if split is not None else None
     return [r for r in rows if (allowed is None or r["id"] in allowed) and (groups is None or r["id"][:1] in groups)]
@@ -75,7 +96,8 @@ def capture(rows,*,api,collection,out,source_hash,timeout=180,query_fn=None,run_
                 if manifest.get("system_config_sha256") is not None and manifest["system_config_sha256"]!=system_config:
                     raise ValueError("system configuration changed during evaluation")
                 manifest["system_config_sha256"]=system_config
-                record.update(ai_answer=body["answer"],retrieved_chunks=[c["content"] for c in body["chunks"]],
+                sent=submitted_chunks(row["question"],body["chunks"])
+                record.update(ai_answer=body["answer"],retrieved_chunks=sent,submitted_chunks=len(sent),total_chunks=len(body["chunks"]),
                               generation_id=generation,status=body.get("status"),trace=body.get("trace"),
                               metrics=body.get("metrics"),response=body)
             except Exception as exc:

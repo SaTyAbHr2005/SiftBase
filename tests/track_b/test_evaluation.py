@@ -68,6 +68,30 @@ def test_capture_preserves_writer_context_and_resume_generation(tmp_path):
         capture(rows,api="local:",collection="different",out=path,source_hash="sourcehash",query_fn=execute)
 
 
+def test_capture_submits_cited_chunks_first_and_only_what_one_judge_call_can_score(tmp_path):
+    rows=[{"id":"s1","question":"capital","benchmark_answer":"reference","benchmark_chunks_w_metadata":{}}]
+    text="x"*2000
+    chunks=([{"content":f"context {i} {text}"} for i in range(20)]+[{"content":"cited "+text,"evidence_role":"claim_support"}]
+            +[{"content":"unseen","evidence_role":"verified_not_in_writer_context"}])
+    def execute(collection,query):
+        return {"generation_id":"g1","config_sha256":"c1","answer":"a","chunks":chunks,"trace":[],"status":"partial"}
+    path=tmp_path/"run.jsonl"
+    capture(rows,api="local:",collection="test",out=path,source_hash="h",query_fn=execute)
+    row=json.loads(path.read_text(encoding="utf-8"))
+    sent=row["retrieved_chunks"]
+    assert sent[0].startswith("cited") and 1<len(sent)<len(chunks) and "unseen" not in sent
+    numbered=[{"id":i,"text":t} for i,t in enumerate(sent)]
+    assert (len("capital")+len(json.dumps(numbered,indent=2))+600)//4+25*len(sent)<=7500
+    assert len(row["response"]["chunks"])==len(chunks)  # the full response is still kept
+    assert row["submitted_chunks"]==len(sent) and row["total_chunks"]==len(chunks)
+
+
+def test_a_chunk_too_big_to_judge_alone_does_not_empty_the_submission():
+    from evaluation.runner import submitted_chunks
+    chunks=[{"content":"x"*40000,"evidence_role":"claim_support"},{"content":"small"}]
+    assert submitted_chunks("q",chunks)==["small"]
+
+
 def test_capture_keeps_failed_query_row_instead_of_skipping(tmp_path):
     rows=[{"id":"s1","question":"capital","benchmark_answer":"reference","benchmark_chunks_w_metadata":{}}]
     def fail(c,q): raise RuntimeError("offline")
