@@ -191,6 +191,51 @@ def test_a_call_does_not_wait_on_a_provider_blocked_for_longer_than_it_would_wai
     assert sleeps == []
 
 
+def test_a_writer_waits_out_a_short_pause_of_a_better_provider(tmp_path, post, monkeypatch):
+    calls, replies = post
+    now = [1000.0]
+    monkeypatch.setattr(llm_mod.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(llm_mod.time, "sleep", lambda s: now.__setitem__(0, now[0] + s))
+    replies[A.url], replies[B.url] = Reply(), Reply()
+    llm_mod._cool(A, llm_mod.SERVER_ERROR_COOLDOWN_S)
+    llm = chain(tmp_path, A, B)
+    assert llm.complete_json("s", "u", name="answer") == {"ok": True}
+    assert calls == [A.url] and now[0] >= 1000 + llm_mod.SERVER_ERROR_COOLDOWN_S
+    llm_mod._cool(A, llm_mod.SERVER_ERROR_COOLDOWN_S)
+    llm.complete_json("s", "u2", name="verify")
+    assert calls[-1] == B.url  # other calls keep moving to the next provider
+
+
+def test_a_writer_does_not_wait_away_the_time_it_needs_to_write(tmp_path, post, monkeypatch):
+    calls, replies = post
+    now = [1000.0]
+    monkeypatch.setattr(llm_mod.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(llm_mod.time, "sleep", lambda s: now.__setitem__(0, now[0] + s))
+    replies[A.url], replies[B.url] = Reply(), Reply()
+    llm = chain(tmp_path, A, B)
+    for pause, deadline, first in ((30, 45, B.url), (30, 150, A.url), (llm_mod.MAX_PACE_WAIT_S, 1000, B.url)):
+        now[0] += 1000
+        llm_mod._cool(A, pause)
+        llm.deadline = now[0] + deadline
+        llm.complete_json("s", f"u{pause}{deadline}", name="answer")
+        assert calls[-1] == first, (pause, deadline)
+
+
+def test_a_writer_whose_better_provider_fails_on_this_call_still_moves_on(tmp_path, post):
+    calls, replies = post
+    replies[A.url], replies[B.url] = Reply(503), Reply()
+    assert chain(tmp_path, A, B).complete_json("s", "u", name="answer") == {"ok": True}
+    assert calls == [A.url, B.url]
+
+
+def test_a_writer_moves_on_when_the_better_provider_is_out_for_longer(tmp_path, post):
+    calls, replies = post
+    replies[B.url] = Reply()
+    llm_mod._cool(A, llm_mod.BAD_KEY_COOLDOWN_S)
+    assert chain(tmp_path, A, B).complete_json("s", "u", name="answer") == {"ok": True}
+    assert calls == [B.url]
+
+
 def test_writing_uses_its_own_model_order(tmp_path, post):
     calls, replies = post
     replies[A.url], replies[B.url] = Reply(), Reply()

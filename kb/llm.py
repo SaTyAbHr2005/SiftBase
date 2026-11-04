@@ -239,12 +239,20 @@ class ChainLLM(LLM):
         if not usable:
             raise LLMError(f"{name}: about {estimate} input tokens fit no configured provider")
         errors: list[str] = []
+        failed_here: set[str] = set()
         for attempt in range(1, s.llm_max_retries + 1):
             # With every provider busy, wait for one to free up rather than fail a call that could have run seconds later.
             for _ in range(int(MAX_PACE_WAIT_S / PACE_POLL_S)):
                 tried = False
                 for i, (provider, limit) in enumerate(usable):
-                    if _cooling_until(provider) > time.monotonic() or not _take_tokens(provider, estimate + min(limit, PACE_OUTPUT_TOKENS)):
+                    # A writer's fallbacks are far weaker: wait out a short pause another call put on a better provider,
+                    # if it ends within the poll budget and leaves that provider at least half the time left to write.
+                    now = time.monotonic()
+                    wait = min(MAX_PACE_WAIT_S - 1, (getattr(self, "deadline", float("inf")) - now) / 2)
+                    if name in WRITER_CALLS and any(p.label not in failed_here and now < _cooling_until(p) <= now + wait
+                                                    for p, _ in usable[:i]):
+                        break
+                    if _cooling_until(provider) > now or not _take_tokens(provider, estimate + min(limit, PACE_OUTPUT_TOKENS)):
                         continue
                     tried = True
                     if getattr(self, "deadline", float("inf")) <= time.monotonic():
@@ -255,6 +263,7 @@ class ChainLLM(LLM):
                         return self._attempt(provider, system, user, name, limit, max_tokens, json_mode, share)
                     except (requests.RequestException, LLMError, ValueError, KeyError, IndexError) as e:
                         errors.append(f"{provider.label}: {str(e)[:120]}")
+                        failed_here.add(provider.label)
                 now = time.monotonic()
                 if tried or getattr(self, "deadline", float("inf")) <= now or all(_cooling_until(p) - now > MAX_PACE_WAIT_S for p, _ in usable):
                     break
