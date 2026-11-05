@@ -169,6 +169,23 @@ SERVER_ERROR_COOLDOWN_S = 30
 DEADLINE_CUT_COOLDOWN_S = 5
 PLAN_FIRST_SHARE = 0.6  # of a 20 s planner deadline: 12 s, above the 8.4 s slowest successful Cloudflare plan seen
 BAD_KEY_COOLDOWN_S = 3600
+QUOTA_COOLDOWN_S = 3600  # Cloudflare's allowance frees up over a rolling 24 h; one try an hour finds out when
+# Cloudflare's 429 for a used-up free allocation (code 4006), which gives no Retry-After. Other daily limits, such as
+# Groq's "tokens per day", say when to retry, and the normal Retry-After cooldown follows that.
+QUOTA_USED_UP = re.compile(r'"code"\s*:\s*4006|daily free allocation', re.I)
+_quota_out: dict[str, float] = {}  # provider label -> monotonic time its daily allowance was found used up
+
+
+def at_capacity(settings) -> float:
+    """Seconds until the first writer provider's daily allowance is worth trying again; 0 when it is usable.
+    Answers come from that provider, so without it a query would only reach fallbacks that cannot write them."""
+    providers = settings.writer_providers or settings.providers
+    if not providers:
+        return 0.0
+    with _cooldown_lock:
+        found = _quota_out.get(providers[0].label)
+        # window - elapsed, not (found + window) - now: the latter can round above the window.
+        return 0.0 if found is None else max(0.0, QUOTA_COOLDOWN_S - (time.monotonic() - found))
 
 
 def _cooling_until(provider) -> float:
@@ -317,6 +334,10 @@ class ChainLLM(LLM):
                         raise
                 if resp.status_code >= 400:
                     _cool(provider, _http_cooldown(resp))
+                    if resp.status_code == 429 and QUOTA_USED_UP.search(getattr(resp, "text", "") or ""):
+                        _cool(provider, QUOTA_COOLDOWN_S)
+                        with _cooldown_lock:
+                            _quota_out[provider.label] = time.monotonic()
                     raise LLMError(f"HTTP {resp.status_code}")
                 content,finish_reason,in_tok,out_tok=response_parts(resp.json())
                 # Some free endpoints omit usage: estimate so limits and traces stay meaningful.

@@ -1,10 +1,13 @@
 """POST /query only. Person 1's app mounts this router; no competing /index."""
 from dataclasses import dataclass
+import math
 import re
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
+from kb.config import get_settings
+from kb.llm import at_capacity
 from kb.query.errors import QueryError
 from kb.query.pipeline import answer_query
 
@@ -66,6 +69,14 @@ async def query_route(body: QueryIn,request: Request):
     if not COLLECTION_RE.fullmatch(body.collection_name) or not body.query.strip():
         error=QueryError("INVALID_REQUEST","Invalid collection name or empty query",422)
         return JSONResponse(status_code=422,content=error.to_body(request_id))
+    # Without the model that writes answers, a query would spend its time on fallbacks that cannot write them.
+    try:
+        wait=math.ceil(at_capacity(get_settings()))
+    except Exception:  # a settings error is reported by the query path below, with its own error code
+        wait=0
+    if wait:
+        error=QueryError("AT_CAPACITY","The answer model's free daily allowance is used up; try again later.",503,retryable=True)
+        return JSONResponse(status_code=503,content=error.to_body(request_id),headers={"Retry-After":str(wait)})
     def run():
         services=bind_services(request,body.collection_name)
         try:

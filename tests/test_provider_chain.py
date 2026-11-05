@@ -278,6 +278,37 @@ def test_a_reply_cut_off_at_the_output_limit_stops_the_chain_so_the_caller_can_s
     assert caught.value.code == "MODEL_SCHEMA" and calls == [A.url, A.url]
 
 
+class QuotaUsedUp(Reply):
+    text = ('{"errors":[{"message":"AiError: you have used up your daily free allocation of 10,000 neurons",'
+            '"code":4006}],"success":false}')
+
+
+def test_a_used_up_daily_quota_benches_the_provider_for_an_hour_and_reports_capacity(tmp_path, post):
+    calls, replies = post
+    replies[A.url], replies[B.url] = QuotaUsedUp(429), Reply()
+    llm = chain(tmp_path, A, B)
+    assert llm.complete_json("s", "u", name="plan") == {"ok": True}  # this call still moves on to B
+    assert 3500 < llm_mod.at_capacity(llm.settings) <= llm_mod.QUOTA_COOLDOWN_S
+    assert llm_mod.at_capacity(chain(tmp_path, B, A).settings) == 0  # only the first writer provider counts
+
+
+class GroqDailyLimit(Reply):
+    text = ('{"error":{"message":"Rate limit reached for model `openai/gpt-oss-120b` on tokens per day (TPD): '
+            'Limit 200000, Used 199000, Requested 7000. Please try again in 5m12s.","code":"rate_limit_exceeded"}}')
+
+
+def test_an_ordinary_or_a_retry_after_rate_limit_is_not_a_used_up_quota(tmp_path, post):
+    _, replies = post
+    replies[A.url], replies[B.url] = [Reply(429), GroqDailyLimit(429, headers={"Retry-After": "312"})], Reply()
+    llm = chain(tmp_path, A, B)
+    llm.complete_json("s", "u", name="plan")
+    assert llm_mod.at_capacity(llm.settings) == 0
+    llm_mod._cooldowns.clear()
+    llm.complete_json("s", "u2", name="plan")
+    assert llm_mod.at_capacity(llm.settings) == 0  # Groq's daily limit tells us when to retry: follow it
+    assert llm_mod._cooling_until(A) - llm_mod.time.monotonic() <= 312
+
+
 def test_writing_uses_its_own_model_order(tmp_path, post):
     calls, replies = post
     replies[A.url], replies[B.url] = Reply(), Reply()

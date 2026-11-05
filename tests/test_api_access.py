@@ -79,6 +79,23 @@ def test_a_path_prefix_a_trailing_slash_or_another_verb_cannot_get_around_the_ke
     assert client.post("/query", json=BODY, headers={"X-API-Key": "k"}).status_code == 422
 
 
+def test_query_answers_at_capacity_at_once_when_the_writer_quota_is_used_up(client, monkeypatch):
+    import kb.routes.query as route
+    monkeypatch.setattr(route, "at_capacity", lambda settings: 1200)
+    monkeypatch.setattr(route, "bind_services", lambda *a: (_ for _ in ()).throw(AssertionError("pipeline ran")))
+    r = client.post("/query", json={"collection_name": "c1", "query": "q"})
+    assert r.status_code == 503 and r.headers["Retry-After"] == "1200"
+    assert r.json()["error"]["code"] == "AT_CAPACITY" and r.json()["error"]["retryable"] is True
+
+
+def test_a_settings_error_skips_the_capacity_check_and_is_reported_by_the_query_path(client, monkeypatch):
+    import kb.routes.query as route
+    monkeypatch.setattr(route, "get_settings", lambda: (_ for _ in ()).throw(ValueError("bad chain")))
+    monkeypatch.setattr(route, "bind_services", lambda *a: (_ for _ in ()).throw(ValueError("bad chain")))
+    r = client.post("/query", json={"collection_name": "c1", "query": "q"})
+    assert r.status_code == 500 and r.json()["error"]["code"] != "INTERNAL_ERROR"
+
+
 def test_index_has_a_daily_limit_and_zero_turns_a_limit_off(client, monkeypatch):
     monkeypatch.setenv("KB_INDEX_PER_DAY", "1")
     monkeypatch.setenv("KB_QUERY_PER_HOUR", "0")
