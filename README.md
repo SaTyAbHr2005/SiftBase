@@ -1,5 +1,7 @@
 # SiftBase
 
+[![tests](https://github.com/SaTyAbHr2005/SiftBase/actions/workflows/tests.yml/badge.svg)](https://github.com/SaTyAbHr2005/SiftBase/actions/workflows/tests.yml)
+
 A smart knowledge base for AI agents that goes beyond top-k RAG. The API exposes exactly POST /index and POST /query. The query path has ten stages, exact source fragments, coverage limitations, structured claim verification, and separate Langfuse observations.
 
 No 0.95 accuracy result or production readiness is claimed.
