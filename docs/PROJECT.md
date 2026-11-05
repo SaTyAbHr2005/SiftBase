@@ -21,7 +21,7 @@ The API has two routes:
 | Access | API keys, per-key and shared daily rate limits, `AT_CAPACITY` when the free answer model is used up |
 | Tests | 408 passed, 1 skipped, 7 slow deselected; run on every push by GitHub Actions |
 | Accuracy target (80% answer precision and recall on the 8-question set) | **Not met** (below) |
-| Latency target (30 s) | **Not met.** Median 40-44 s in the two latest runs |
+| Latency target (30 s) | **Not met.** Median 34-40 s in the three latest runs |
 
 ## Measured results
 
@@ -32,8 +32,12 @@ All runs use the same 8 development questions (B30, C17, C18, C26, C31, C32, A20
 | Baseline, 2026-10-31 | before the recall work | 53% / 22% | 50% / 53% | 31 s / 163 s |
 | `run_fix4`, 2026-11-02 | `310f4f6` | 72.5% / 32.2% | 52.7% / 64.1% | 44 s / 183 s |
 | `run_wait8b`, 2026-11-04 | `0cf3941` | 46.2% / 26.5% | 54.3% / 62.9% | 40 s / 76 s |
+| `run_rep_b`, 2026-11-05 | `61a8118` | 48.2% / 22.7% | 41.7% / 59.0% | 34 s / 56 s |
+| `run_rep_c`, 2026-11-05 | `61a8118` | 47.4% / 11.6% | 45.6% / 60.8% | 38 s / 130 s |
 
 A single run is not a measurement. `run_fix4` and `run_wait8b` used the same retrieval and writing code with no provider failures, yet their answer precision differs by 26 points. The planner, the source check and the writer all give different outputs from run to run, and the judge splits the same benchmark answer into a different number of points each time. Compare the mean of at least 2-3 runs per version, and say how many runs a number comes from.
+
+Over the four runs since 2026-11-02, answer precision averages 53.6% (range 46.2% to 72.5%, standard deviation 12.6) and answer recall 23.2% (standard deviation 8.7). Three of the four land between 46% and 49% precision, so `run_fix4` sits at the high end of the spread. The two runs on `61a8118` include `ee38235`, which splits a writer reply that was cut off at its output limit. In `run_rep_c` the first half of C26's split was cut off again and is not split further, so C26 answered from half of its evidence.
 
 Context scores cover a subset of the passages. Since `452ede5` the runner submits the passages cited in the answer first and stops at what one judge call can score, so `run_wait8b`'s context scores cover the first 44-54 of 45-58 passages on four questions. Each row records `submitted_chunks` and `total_chunks`.
 
