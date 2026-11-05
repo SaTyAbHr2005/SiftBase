@@ -1,4 +1,5 @@
 """Provider wire format and the free-tier fallback order. Every provider takes the same OpenAI-style request."""
+import os
 import re
 from dataclasses import dataclass, field
 
@@ -34,8 +35,22 @@ class Provider:
         return f"{self.name}:{self.model}"
 
 
+# Providers that keep no inference data by default (Cloudflare Workers AI: zero retention, no training; Groq: no
+# retention except opt-out abuse logs). OpenRouter's free models, Mistral and Gemini free tiers may log or train on it.
+PRIVATE_SAFE = {"cloudflare", "groq"}
+
+
+def private_mode(env=None) -> bool:
+    """KB_PRIVATE is on unless set to "0", "false" or "no", so any other value keeps documents private."""
+    return (os.environ if env is None else env).get("KB_PRIVATE", "1").strip().lower() not in ("0", "false", "no")
+
+
 def build_providers(env, variable="KB_LLM_PROVIDERS", default=DEFAULT_CHAIN):
-    """Chain entries are `name` or `name:model`. Entries without their key are left out of the chain."""
+    """Chain entries are `name` or `name:model`. Entries without their key are left out of the chain.
+    KB_PRIVATE keeps documents with PRIVATE_SAFE providers (see private_mode): the default chains just leave the
+    others out, and a chain that names one on purpose is refused."""
+    private = private_mode(env)
+    explicit = bool(env.get(variable, "").strip()) or default not in (DEFAULT_CHAIN, WRITER_CHAIN)
     out = []
     for entry in env.get(variable, default).split(","):
         name, _, model = entry.strip().partition(":")
@@ -43,6 +58,11 @@ def build_providers(env, variable="KB_LLM_PROVIDERS", default=DEFAULT_CHAIN):
             continue
         if name not in CATALOG:
             raise ValueError(f"unknown provider {name!r} in KB_LLM_PROVIDERS: use {sorted(CATALOG)}")
+        if private and name not in PRIVATE_SAFE:
+            if explicit:
+                raise ValueError(f"{variable} names {name!r}, which may log or train on documents; "
+                                 f"set KB_PRIVATE=0 to allow it")
+            continue
         url, key_name, default_model, max_total = CATALOG[name]
         needed = re.findall(r"{(\w+)}", url)
         if not env.get(key_name) or not all(env.get(n) for n in needed):

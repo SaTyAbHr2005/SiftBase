@@ -53,6 +53,12 @@ That CLI reads process environment variables; the server launcher loads `.env`. 
 
 A request over a limit gets HTTP 429 with `Retry-After`. `0` turns a limit off. The counts live in the server's memory, so they reset when the service restarts.
 
+### Private documents
+
+`KB_PRIVATE` is on by default (any value except `0`, `false` or `no`). It keeps document text with providers that keep none of it: Cloudflare Workers AI (no retention, no training) and Groq (no retention by default; turn off its abuse logging in Groq's Data Controls). OpenRouter's free models, Mistral and Gemini drop out of the default chains, and naming one in `KB_LLM_PROVIDERS`, `KB_WRITER_PROVIDERS`, `KB_VISION_PROVIDER` or `KB_JUDGE_PROVIDERS` stops the service with an error. Langfuse traces keep their structure, counts and timings, but every text value becomes its length, such as `[redacted: 1234 chars]`. Set `KB_PRIVATE=0` only for public documents.
+
+Not covered: with `MONGODB_URI` set, the full index, chunk text included, is stored in your MongoDB Atlas cluster.
+
 ## Validation
 
 ```bash

@@ -27,10 +27,11 @@ class LangfuseSink:
     def __init__(self, client=None):
         if client is None:
             from langfuse import Langfuse
+            from kb.tracing import mask_private
             client = Langfuse(public_key=os.environ.get("LANGFUSE_PUBLIC_KEY"),
                               secret_key=os.environ.get("LANGFUSE_SECRET_KEY"),
                               base_url=os.environ.get("LANGFUSE_BASE_URL", os.getenv("LANGFUSE_HOST")),
-                              sample_rate=1.0)
+                              sample_rate=1.0, mask=mask_private)
         self.client = client
         self.trace_id = None
 
@@ -46,7 +47,14 @@ class LangfuseSink:
             self.trace_id = self.client.get_current_trace_id()
             yield span
         except BaseException as exc:
-            manager.__exit__(type(exc), exc, exc.__traceback__)
+            from kb.model_api import private_mode
+            if private_mode():
+                # The SDK records an exception's message and stack unmasked; a message can quote document text.
+                from kb.tracing import error_text
+                span.update(level="ERROR", status_message=error_text(exc))
+                manager.__exit__(None, None, None)
+            else:
+                manager.__exit__(type(exc), exc, exc.__traceback__)
             raise
         else:
             manager.__exit__(None, None, None)

@@ -19,7 +19,7 @@ import requests
 
 from kb.config import Settings
 from kb.textutil import tokens
-from kb.tracing import clip, lf_generation
+from kb.tracing import clip, error_text, lf_generation
 
 
 class LLMError(RuntimeError):
@@ -336,7 +336,7 @@ class ChainLLM(LLM):
                     self.cache.put(ResponseCache.key(provider.label, json_mode, max_tokens, system, user), name, content)
                 return out
             except (requests.RequestException, LLMError, ValueError, KeyError, IndexError) as e:
-                gen.update(level="ERROR", status_message=str(e)[:300])
+                gen.update(level="ERROR", status_message=error_text(e))
                 raise
 
     def _cost(self, in_tok: int, out_tok: int) -> dict | None:

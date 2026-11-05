@@ -1,6 +1,7 @@
 """Response trace (exactly four keys per step) and a Langfuse facade that never breaks a request."""
 import logging
 import os
+import re
 from contextlib import contextmanager
 from typing import Any
 
@@ -38,6 +39,32 @@ class _Noop:
         pass
 
 
+SAFE_KEY = re.compile(r"[A-Za-z0-9_.:-]{1,40}")  # ids and field names; a key with spaces may be query or document text
+
+
+def mask_private(*, data: Any, **kwargs) -> Any:
+    """Langfuse mask: in private mode (KB_PRIVATE) every text value becomes its length, so prompts, documents and
+    answers never reach the tracing service; structure, numbers, token counts and timings stay. Anything that is not
+    a number, bool, None, dict or list is redacted, so an unexpected type cannot carry text out."""
+    from kb.model_api import private_mode
+    if not private_mode() or data is None or isinstance(data, (bool, int, float)):
+        return data
+    if isinstance(data, str):
+        return f"[redacted: {len(data)} chars]"
+    if isinstance(data, dict):
+        return {(k if isinstance(k, str) and SAFE_KEY.fullmatch(k) else f"[redacted key {i}]"): mask_private(data=v)
+                for i, (k, v) in enumerate(data.items())}
+    if isinstance(data, (list, tuple)):
+        return [mask_private(data=v) for v in data]
+    return f"[redacted: {type(data).__name__}]"
+
+
+def error_text(exc: BaseException) -> str:
+    """What a trace may say about an error: its message, or only its type in private mode (a message can quote data)."""
+    from kb.model_api import private_mode
+    return type(exc).__name__ if private_mode() else str(exc)[:300]
+
+
 _client = None
 _client_checked = False
 
@@ -50,7 +77,7 @@ def _lf():
         if os.environ.get("LANGFUSE_PUBLIC_KEY") and os.environ.get("LANGFUSE_SECRET_KEY"):
             try:
                 from langfuse import Langfuse
-                _client = Langfuse()
+                _client = Langfuse(mask=mask_private)
             except Exception as e:  # observability must never break serving
                 log.warning("langfuse disabled: %s", e)
     return _client

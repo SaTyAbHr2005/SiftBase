@@ -361,9 +361,29 @@ def test_no_provider_is_a_clear_error(tmp_path):
         chain(tmp_path).complete_json("s", "u", name="plan")
 
 
+ALL_KEYS = {"CLOUDFLARE_API_TOKEN": "c", "CLOUDFLARE_ACCOUNT_ID": "a", "GROQ_API_KEY": "g", "OPENROUTER_API_KEY": "o",
+            "MISTRAL_API_KEY": "m", "GEMINI_API_KEY": "e"}
+
+
+def test_private_mode_is_the_default_and_keeps_documents_with_no_retention_providers():
+    for chain_ in (build_providers(ALL_KEYS), build_providers(ALL_KEYS, "KB_WRITER_PROVIDERS", WRITER_CHAIN)):
+        assert chain_ and {p.name for p in chain_} <= {"cloudflare", "groq"}
+    opened = {p.name for p in build_providers({**ALL_KEYS, "KB_PRIVATE": "0"})}
+    assert {"openrouter", "mistral", "gemini"} <= opened
+
+
+def test_naming_a_provider_that_may_train_on_data_fails_in_private_mode():
+    for variable in ("KB_LLM_PROVIDERS", "KB_WRITER_PROVIDERS"):
+        with pytest.raises(ValueError, match="KB_PRIVATE"):
+            build_providers({**ALL_KEYS, variable: "cloudflare,gemini"}, variable)
+    with pytest.raises(ValueError, match="KB_PRIVATE"):  # the writer chain falls back to an explicit KB_LLM_PROVIDERS
+        build_providers({**ALL_KEYS}, "KB_WRITER_PROVIDERS", "mistral")
+    assert [p.name for p in build_providers({**ALL_KEYS, "KB_LLM_PROVIDERS": "groq,cloudflare"})] == ["groq", "cloudflare"]
+
+
 def test_build_providers_keeps_order_and_skips_missing_keys():
     env = {"KB_LLM_PROVIDERS": "cloudflare,groq,groq:openai/gpt-oss-20b,gemini", "GROQ_API_KEY": "g", "GEMINI_API_KEY": "m",
-           "CLOUDFLARE_API_TOKEN": "c"}  # no account ID, so Cloudflare is left out
+           "CLOUDFLARE_API_TOKEN": "c", "KB_PRIVATE": "0"}  # no account ID, so Cloudflare is left out
     assert [p.label for p in build_providers(env)] == ["groq:openai/gpt-oss-120b", "groq:openai/gpt-oss-20b", "gemini:gemini-3.5-flash"]
     env["CLOUDFLARE_ACCOUNT_ID"] = "acct"
     first = build_providers(env)[0]
@@ -375,7 +395,7 @@ def test_build_providers_keeps_order_and_skips_missing_keys():
 
 def test_default_chain_uses_only_keys_that_exist():
     assert build_providers({}) == ()
-    assert [p.name for p in build_providers({"GEMINI_API_KEY": "m", "GROQ_API_KEY": "g"})] == ["groq", "gemini"]
+    assert [p.name for p in build_providers({"GEMINI_API_KEY": "m", "GROQ_API_KEY": "g", "KB_PRIVATE": "0"})] == ["groq", "gemini"]
 
 
 def test_wire_format_is_openai_style_and_turns_thinking_down():
