@@ -5,6 +5,7 @@
 Costs one real query (~$0.04) unless the server runs with KB_LLM_MODE=dryrun. Without --zip it only queries.
 """
 import argparse
+import os
 import re
 import sys
 import time
@@ -15,13 +16,15 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--url", required=True); p.add_argument("--collection", required=True)
     p.add_argument("--query", required=True); p.add_argument("--zip")
+    # From the environment by default, so the key stays out of shell history.
+    p.add_argument("--api-key", default=os.environ.get("SIFTBASE_API_KEY", ""))
     a = p.parse_args(); base = a.url.rstrip("/"); ok = True
 
     def check(name, cond):
         nonlocal ok
         ok &= bool(cond); print(("  OK   " if cond else "  FAIL ") + name)
 
-    with httpx.Client(timeout=None) as http:
+    with httpx.Client(timeout=None, headers={"X-API-Key": a.api_key} if a.api_key else {}) as http:
         if a.zip:
             t = time.time()
             with open(a.zip, "rb") as f:
