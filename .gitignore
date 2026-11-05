@@ -1,5 +1,6 @@
 .venv/
 data/
+!web/data/
 runs/
 __pycache__/
 *.pyc

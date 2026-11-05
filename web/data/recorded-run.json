@@ -1,0 +1,1605 @@
+{
+ "question": "How does the Basel framework treat credit valuation adjustment risk?",
+ "recorded_at": "2026-11-05",
+ "status": "partial",
+ "answer": "## Short answer\n- The Basel framework treats credit valuation adjustment (CVA) risk by requiring banks to calculate the CVA risk capital requirement for their CVA portfolio on a standalone basis. [BCBS-Basel-Endgame.pdf p113]\n- Banks can use either the standardised approach (SA-CVA) or the basic approach (BA-CVA) for calculating CVA capital, with the BA-CVA being the default unless approved for SA-CVA. [BCBS-Basel-Endgame.pdf p113]\n- CVA risk is defined as the risk of changes to CVA arising from changes in credit spreads of the contracting parties, compounded by changes to the value or variability in the value of the underlying of the derivative transaction. [BCBS-MarketRisk.pdf p18]\n\n## Identify the treatment of credit valuation adjustment (CVA) risk in the Basel framework.\n- Eligible external hedges included in the CVA capital requirement must be removed from the bank’s market risk capital requirement calculation. [BCBS-MarketRisk.pdf p15]\n- Internal CVA risk transfers can only receive regulatory capital recognition if the internal risk transfer is documented with respect to the CVA risk being hedged and the sources of such risk. [BCBS-MarketRisk.pdf p15]\n- CVA is defined as an adjustment to the valuation of a derivative transaction to account for the credit risk of contracting parties. [BCBS-MarketRisk.pdf p18]\n- The CVA risk capital requirement is calculated for a bank’s CVA portfolio on a standalone basis. [BCBS-Basel-Endgame.pdf p113]\n- Banks must have a CVA desk (or a similar dedicated function) responsible for risk management and hedging of CVA. [BCBS-Basel-Endgame.pdf p119]\n- The SA-CVA uses as inputs the sensitivities of regulatory CVA to counterparty credit spreads and market risk factors driving covered transactions’ values. [BCBS-Basel-Endgame.pdf p118]\n- Sensitivities must be computed by banks in accordance with the sensitivity validation standards described for the SA-TB in the revised market risk standard. [BCBS-Basel-Endgame.pdf p118]\n- The risk weight in the BA-CVA for high yield and non-rated sovereigns, including exposures to central banks and multilateral development banks, will be reduced from 3% to 2%. [BCBS-CreditValuation.pdf p5]\n- CVA reflects the adjustment of default risk-free prices of derivatives and securities financing transactions (SFTs) due to a potential default of the counterparty. [BCBS-CreditValuation.pdf p7]\n\n## Compare the treatment of credit valuation adjustment (CVA) risk in the Basel III framework and the targeted revisions to the CVA risk framework.\n- The Basel III framework includes the treatment of CVA risk, with the CVA risk capital requirement calculated for a bank’s CVA portfolio on a standalone basis. [BCBS-Basel-Endgame.pdf p113]\n- The targeted revisions to the CVA risk framework introduce changes to the BA-CVA, including a reduction in the risk weight for high yield and non-rated sovereigns from 3% to 2%. [BCBS-CreditValuation.pdf p5]\n- The targeted revisions to the CVA risk framework also specify that the SA-CVA uses sensitivities of regulatory CVA to counterparty credit spreads and market risk factors driving covered transactions’ values. [BCBS-Basel-Endgame.pdf p118]\n\n## Examine the document 'Targeted revisions to the credit valuation adjustment risk framework' for specific methodologies related to CVA risk.\n- The targeted revisions to the CVA risk framework include the use of the standardised approach (SA-CVA) and the basic approach (BA-CVA) for calculating CVA capital. [BCBS-Basel-Endgame.pdf p113]\n- The reduced version of the BA-CVA (Kreduced) calculates the capital requirement for CVA risk as follows, with summations taken over all counterparties within scope of the CVA charge. [BCBS-Basel-Endgame.pdf p114]\n- The basic assumption underlying the BA-CVA is that systematic credit spread risk is driven by a single factor. [BCBS-Basel-Endgame.pdf p115]\n- The targeted revisions to the CVA risk framework specify that all external CVA hedges (whether eligible or not) that are covered transactions must be included in the CVA calculation for the counterparty to the hedge. [BCBS-Basel-Endgame.pdf p114; BCBS-CreditValuation.pdf p8]",
+ "latency_ms": 51047.0,
+ "coverage": {
+  "limitations": [
+   "6 selected pages omitted by raw-read budget",
+   "20 verified fragments omitted from writer context",
+   "Requested topics not fully supported by final claims: Compare the treatment of credit valuation adjustment (CVA) risk in the Basel III framework and the targeted revisions to the CVA risk framework.",
+   "Some requested operations remain unresolved; see task worksheet"
+  ]
+ },
+ "chunks": [
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 1,
+   "text": "# Basel Committee on Banking Supervision\n## Targeted revisions to the credit valuation adjustment risk framework\nJuly 2020",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-Basel-Endgame.pdf",
+   "page": 115,
+   "text": "4 One of the basic assumptions underlying the BA-CVA is that systematic credit spread risk is driven by a single factor. Under",
+   "cited_by_claim_ids": [
+    "c18"
+   ]
+  },
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 5,
+   "text": "The final targeted revisions to the framework text are presented in the Annex and will be reflected\nin the consolidated Basel Framework.",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-Basel-Endgame.pdf",
+   "page": 119,
+   "text": "- A bank must have a CVA desk (or a similar dedicated function) responsible for risk management\nand hedging of CVA.\n\n2. Regulatory CVA calculations",
+   "cited_by_claim_ids": [
+    "c8"
+   ]
+  },
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 3,
+   "text": "Contents\n\nTargeted revisions to the credit valuation adjustment risk framework ....................................................................... 1",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-Basel-Endgame.pdf",
+   "page": 114,
+   "text": "- All external CVA hedges (whether eligible or not) that are covered transactions must be included\nin the CVA calculation for the counterparty to the hedge.",
+   "cited_by_claim_ids": [
+    "c19"
+   ]
+  },
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 3,
+   "text": "Overview of the targeted revisions ............................................................................................................................................ 1",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 3,
+   "text": "Introduction and background ...................................................................................................................................................... 1",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 8,
+   "text": "(1) All external CVA hedges (including both eligible and ineligible external CVA hedges) that\nare covered transactions must be included in the CVA calculation of the counterparty\nproviding to the hedge.",
+   "cited_by_claim_ids": [
+    "c19"
+   ]
+  },
+  {
+   "document": "BCBS-MarketRisk.pdf",
+   "page": 18,
+   "text": "Terminology for credit valuation adjustment risk\n\n10.34 Credit valuation adjustment (CVA): an adjustment to the valuation of a derivative transaction to\naccount for the credit risk of contracting parties.",
+   "cited_by_claim_ids": [
+    "c6"
+   ]
+  },
+  {
+   "document": "BCBS-MarketRisk.pdf",
+   "page": 15,
+   "text": "25.32 In any case, such internal CVA risk transfers can only receive regulatory capital recognition if the\ninternal risk transfer is documented with respect to the CVA risk being hedged and the sources\nof such risk.",
+   "cited_by_claim_ids": [
+    "c5"
+   ]
+  },
+  {
+   "document": "BCBS-Basel-Endgame.pdf",
+   "page": 113,
+   "text": "4. The CVA risk capital requirement is calculated for a bank’s “CVA portfolio” on a standalone basis.\nThe CVA portfolio includes CVA for a bank’s entire portfolio of covered transactions and eligible CVA\nhedges.",
+   "cited_by_claim_ids": [
+    "c1",
+    "c7",
+    "c13"
+   ]
+  },
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 5,
+   "text": "In addition, the Committee has also agreed that the risk weight in the BA-CVA for high yield and\nnon-rated sovereigns, including exposures to central banks and multilateral development banks, will be\nreduced from 3% to 2%.",
+   "cited_by_claim_ids": [
+    "c11",
+    "c14"
+   ]
+  },
+  {
+   "document": "BCBS-MarketRisk.pdf",
+   "page": 15,
+   "text": "_Eligible hedges for the CVA capital requirement_\n\n25.30 Eligible external hedges that are included in the credit valuation adjustment (CVA) capital\nrequirement must be removed from the bank’s market risk capital requirement calculation.",
+   "cited_by_claim_ids": [
+    "c4"
+   ]
+  },
+  {
+   "document": "BCBS-MarketRisk.pdf",
+   "page": 18,
+   "text": "10.33 Risk-theoretical P&L (RTPL): the daily desk-level P&L that is predicted by the valuation engines\nin the trading desk risk management model using all risk factors used in the trading desk risk\nmanagement model (ie including the NMRFs).",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-Basel-Endgame.pdf",
+   "page": 113,
+   "text": "5. Two approaches are available for calculating CVA capital: the standardised approach (SA-CVA)\nand the basic approach (BA-CVA). Banks must use the BA-CVA unless they receive approval from their\nrelevant supervisory authority to use the SA-CVA. <sup>2</sup>",
+   "cited_by_claim_ids": [
+    "c2",
+    "c16"
+   ]
+  },
+  {
+   "document": "BCBS-Basel-Endgame.pdf",
+   "page": 142,
+   "text": "- <u>Credit valuation adjustment risk: the standardised approach for CVA (SA-CVA), the Basic</u>\n<u>Approach (BA-CVA) or 100% of a bank’s counterparty credit risk capital requirement (depending</u>\non which approach the bank uses for CVA risk). <sup>5</sup>",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-MarketRisk.pdf",
+   "page": 18,
+   "text": "10.35 CVA risk: the risk of changes to CVA arising from changes in credit spreads of the contracting\nparties, compounded by changes to the value or variability in the value of the underlying of the\nderivative transaction.\n\n12 Minimum capital requirements for market risk",
+   "cited_by_claim_ids": [
+    "c3"
+   ]
+  },
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 7,
+   "text": "50.2 In the context of this document, CVA stands for credit valuation adjustment specified at a\ncounterparty level. CVA reflects the adjustment of default risk-free prices of derivatives and\nsecurities financing transactions (SFTs) due to a potential default of the counterparty.",
+   "cited_by_claim_ids": [
+    "c12"
+   ]
+  },
+  {
+   "document": "BCBS-Basel-Endgame.pdf",
+   "page": 114,
+   "text": "2. Reduced version of the BA-CVA (hedges are not recognised)\n\n12. The capital requirement for CVA risk under the reduced version of the BA-CVA ( _Kreduced_ ) is\ncalculated as follows, where the summations are taken over all counterparties that are within scope of the\nCVA charge:",
+   "cited_by_claim_ids": [
+    "c17"
+   ]
+  },
+  {
+   "document": "BCBS-Basel-Endgame.pdf",
+   "page": 118,
+   "text": "27. The SA-CVA uses as inputs the sensitivities of regulatory CVA to counterparty credit spreads and\nmarket risk factors driving covered transactions’ values. Sensitivities must be computed by banks in\naccordance with the sensitivity validation standards described for the SA-TB in the revised market risk\nstandard.",
+   "cited_by_claim_ids": [
+    "c9",
+    "c10",
+    "c15"
+   ]
+  },
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 5,
+   "text": "One element of the Basel III standards relates to the credit valuation adjustment (CVA) risk\nframework. Banks that undertake derivative or securities financing transactions (SFTs) are subject to the\nrisk of incurring mark-to-market losses because of the deterioration in the creditworthiness of their\ncounterparties. This potential source of loss due to changes in counterparty credit spreads and other\nmarket risk factors is known as CVA risk.",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 5,
+   "text": "### Targeted revisions to the credit valuation adjustment risk framework\n##### Introduction and background\nThe Basel III standards finalised in December 2017 are a central element of the Basel Committee’s response\nto the global financial crisis. They address shortcomings in the pre-crisis regulatory framework and provide\na regulatory foundation for a resilient banking system that supports the real economy.",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 5,
+   "text": "Introduction of new index buckets and revised aggregation of CVA capital\nrequirements\n\nThe revised market risk framework introduced new ‘index buckets’, where banks could, under certain\nconditions, calculate capital requirements using credit and equity indices directly instead of looking\nthrough to the underlying constituents. The Committee has agreed to introduce the same new buckets in\n\nTargeted revisions to the credit valuation adjustment risk framework 1",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 5,
+   "text": "##### Overview of the targeted revisions\nReduced risk weights\n\nThe Committee has agreed to adjust certain risk weights in the SA-CVA. More precisely, all delta\nrisk weights in the interest rate risk class will be reduced by 30%, all delta risk weights in the\nforeign exchange risk class will be reduced by 50% and the delta risk weight in the counterparty credit\nspread and reference credit spread risk classes for high yield and non-rated sovereigns will be reduced\nfrom 3% to 2%. Moreover, the vega risk weights in the SA-CVA will be capped at 100%. These\namendments will align the CVA risk framework with the revised market risk framework.",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-Basel-Endgame.pdf",
+   "page": 118,
+   "text": "#### C. Standardised approach for CVA\n1. General provisions\n\n25. The standardised approach for CVA (SA-CVA) is an adaptation of the standardised approach for\nmarket risk (SA-TB) under the revised market risk standard. The primary differences of the SA-CVA from\nthe SA-TB are: (i) the SA-CVA features a reduced granularity of market risk factors; (ii) the SA-CVA does\nnot include default risk and curvature risk; (iii) the SA-CVA uses a more conservative risk aggregation; (iv)\nthe SA-CVA uses the conservativeness multiplier _m_ CVA.",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 5,
+   "text": "Following the publication of the revised market risk framework in January 2019, the Committee\nin November 2019 consulted on a set of targeted final revisions to the CVA risk framework published in\nDecember 2017. The amendments proposed in the consultation document aimed to align relevant parts\nof the CVA risk framework with the final market risk standard and capital requirements for bank exposures\nto central counterparties. Concurrently, the Committee sought feedback on a possible calibration\nadjustment to overall capital requirements calculated under the CVA standardised (SA-CVA) and basic\n(BA-CVA) approaches.",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-Basel-Endgame.pdf",
+   "page": 114,
+   "text": "#### B. Basic Approach for CVA\n1. General provisions\n\n11. The BA-CVA calculations may be performed either via the reduced version or the full version. The\nfull version recognises counterparty spread hedges and is intended for banks that hedge CVA risk. The\nreduced version is obtained from the full version via elimination of hedging recognition. The reduced\nversion is designed to simplify BA-CVA implementation for less sophisticated banks that do not hedge\nCVA. The reduced BA-CVA is also part of the full BA-CVA capital calculations as a conservative means to\nrestrict hedging efficiency, so all banks using the BA-CVA must make these calculations. Any bank under\nthe BA-CVA approach can choose whether to implement the full version or the reduced version.",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 6,
+   "text": "A revised overall calibration of the CVA risk framework\n\nThe revised CVA risk framework also includes a reduced value of the aggregate multiplier 𝑚��� from 1.25\nto 1 for banks using the SA-CVA. In order to have an appropriate relative calibration between the SA-CVA\nand the BA-CVA, the Committee has also agreed to introduce a similar scalar 𝐷𝑆������ = 0.65 for banks\nusing the BA-CVA. This will result in a recalibration of the capital requirements for CVA risk for banks using\nthese approaches.\n\n2 Targeted revisions to the credit valuation adjustment risk framework",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-Basel-Endgame.pdf",
+   "page": 113,
+   "text": "## Minimum capital requirements for CVA risk\n#### A. General provisions\n1. In the context of this document, CVA stands for credit valuation adjustment specified at a\ncounterparty level. CVA reflects the adjustment of default risk-free prices of derivatives and securities\nfinancing transactions (SFTs) as defined in paragraphs 4 and 5 of Annex 4 of the Basel II framework <sup>1</sup> due\nto a potential default of the counterparty. Regulatory CVA may differ from CVA used for accounting\npurposes as follows: (i) regulatory CVA excludes the effect of the bank’s own default; (ii) several constraints\nreflecting best practice in accounting CVA are imposed on calculations of regulatory CVA, so some banks\nmay find that regulatory CVA deviates from their accounting CVA. Unless explicitly specified otherwise,\nthe term “CVA” in this document means “regulatory CVA”.",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-MarketRisk.pdf",
+   "page": 18,
+   "text": "10.32 Hypothetical P&L (HPL): the daily P&L produced by revaluing the positions held at the end of the\nprevious day using the market data at the end of the current day. Commissions, fees, intraday\ntrading and new/modified deals, valuation adjustments for which separate regulatory capital\napproaches have been otherwise specified as part of the rules and valuation adjustments which\nare deducted from CET1 are excluded from the HPL. Valuation adjustments updated daily should\nusually be included in the HPL. Time effects should be treated in a consistent manner in the HPL\nand risk-theoretical P&L.",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-MarketRisk.pdf",
+   "page": 90,
+   "text": "32.26 Fees and commissions must be excluded from both APL and HPL as well as valuation adjustments\nfor which separate regulatory capital approaches have been otherwise specified as part of the\nrules (eg credit valuation adjustment and its associated eligible hedges) and valuation\nadjustments that are deducted from Common Equity Tier 1 (eg the impact on the debt valuation\nadjustment component of the fair value of financial instruments must be excluded from these\nP&Ls).",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-Basel-Endgame.pdf",
+   "page": 7,
+   "text": "1 The securitisation standard is available at www.bis.org/bcbs/publ/d374.pdf.\n\n2 Counterparty credit risk is defined as the risk that the counterparty to a transaction could default before the final settlement of\nthe transaction’s cash flows. An economic loss would occur if the transactions or portfolio of transactions with the counterparty\nhas a positive economic value at the time of default. Unlike a firm’s exposure to credit risk through a loan, where the exposure\nto credit risk is unilateral and only the lending bank faces the risk of loss, counterparty credit risk creates a bilateral risk of loss:\nthe market value of the transaction can be positive or negative to either counterparty to the transaction. The market value is\nuncertain and can vary over time with the movement of underlying market factors.",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 6,
+   "text": "the: (i) counterparty credit spread risk class; (ii) reference credit spread risk class; and (iii) equity risk class\nof the SA-CVA. More specifically, for credit and equity indices that satisfy the same liquidity and\ndiversification conditions set out in the market risk framework, banks would have the option of calculating\nCVA risk capital requirements based on the index buckets rather than by looking through to the underlying\nconstituents. The Committee has also agreed to revise the formula for aggregating capital requirements\nacross buckets in the CVA risk framework in order to better align it to the market risk framework.",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-CreditValuation.pdf",
+   "page": 6,
+   "text": "Alterations to the scope of CVA risk capital requirements\n\nThe Committee has also agreed to adjust the scope of portfolios subject to CVA risk capital requirements\nby excluding some SFTs where the CVA risks stemming from such positions are not material, and\nexempting certain client-cleared derivatives. Moreover, the floor for the margin period of risk for some\ncentrally-cleared client derivatives has been reduced. This brings the CVA requirement more in line with\nthe Counterparty credit risk framework and further incentivises banks to centrally clear over-the-counter\nderivatives.",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-MarketRisk.pdf",
+   "page": 15,
+   "text": "25.34 Independent from the treatment in the CVA risk capital requirement and the market risk capital\nrequirement, internal risk transfers between the CVA portfolio and the trading book can be used\nto hedge the counterparty credit risk exposure of a derivative instrument in the trading or\nbanking book as long as the requirements of [RBC25.21] are met.\n\nMinimum capital requirements for market risk 9",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-MarketRisk.pdf",
+   "page": 15,
+   "text": "25.33 Internal CVA risk transfers that are subject to curvature, default risk or residual risk add-on as set\nout in [MAR20] through [MAR23] may be recognised in the CVA portfolio capital requirement\nand market risk capital requirement only if the trading book additionally enters into an external\nhedge with an eligible third-party protection provider that exactly matches the internal risk\ntransfer.",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-MarketRisk.pdf",
+   "page": 15,
+   "text": "25.31 Banks may enter into internal risk transfers between the CVA portfolio and the trading book. Such\nan internal risk transfer consists of a CVA portfolio side and a non-CVA portfolio side. Where the\nCVA portfolio side of an internal risk transfer is recognised in the CVA risk capital requirement,\nthe CVA portfolio side should be excluded from the market risk capital requirement, while the\nnon-CVA portfolio side should be included in the market risk capital requirement.",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-MarketRisk.pdf",
+   "page": 15,
+   "text": "_Internal risk transfers within the scope of application of the market risk capital requirement_\n\n25.28 Internal risk transfers between trading desks within the scope of application of the market risk\ncapital requirements (including FX risk and commodities risk in the banking book) will generally\nreceive regulatory capital recognition. Internal risk transfers between the internal risk transfer\ndesk and other trading desks will only receive regulatory capital recognition if the constraints in",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-Basel-Endgame.pdf",
+   "page": 5,
+   "text": "7. Third, the Committee conducted a comprehensive and rigorous assessment of the impact of\nthese revisions on the banking system and the wider macro economy. As a result of this assessment, the\nCommittee focused on not significantly increasing overall capital requirements. <sup>2</sup> This is reflected in the\ndesign, calibration and transitional arrangements discussed below. The Committee will continue to\nmonitor and evaluate the effectiveness of these reforms in reducing excessive RWA variability.",
+   "cited_by_claim_ids": []
+  },
+  {
+   "document": "BCBS-Basel-Endgame.pdf",
+   "page": 84,
+   "text": "(i) Expected loss for exposures other than exposures subject to the supervisory slotting\ncriteria\n\n143. Banks must calculate EL as PD x LGD for corporate, bank, and retail exposures not in default. For\ncorporate, bank, and retail exposures that are in default, banks must use their best estimate of expected\nloss as defined in paragraph 238 for exposures subject to the advanced approach and for exposures\nsubject to the foundation approach banks must use the supervisory LGD. For exposures subject to the\nsupervisory slotting criteria EL is calculated as described in paragraphs 144 to 146. Securitisation exposures\ndo not contribute to the EL amount, as set out in paragraph 37 of the securitisation framework.",
+   "cited_by_claim_ids": []
+  }
+ ],
+ "funnel": {
+  "documents_routed": 3,
+  "candidate_pages": 327,
+  "pages_picked": 12,
+  "passages_gathered": 99,
+  "passages_checked": 99,
+  "passages_kept": 41,
+  "claims_drafted": 19,
+  "claims_accepted": 19,
+  "claims_withdrawn": 0,
+  "pages_cited": 10
+ },
+ "pages": {
+  "routed": [
+   "BCBS-Basel-Endgame.pdf",
+   "BCBS-MarketRisk.pdf",
+   "BCBS-CreditValuation.pdf"
+  ],
+  "gathered": {
+   "BCBS-CreditValuation.pdf": [
+    5,
+    3,
+    1,
+    6,
+    7,
+    8
+   ],
+   "BCBS-MarketRisk.pdf": [
+    18,
+    3,
+    67,
+    63,
+    16,
+    38,
+    7,
+    1,
+    90,
+    15,
+    120
+   ],
+   "BCBS-Basel-Endgame.pdf": [
+    142,
+    147,
+    7,
+    113,
+    5,
+    84,
+    1,
+    82,
+    51,
+    141,
+    32,
+    146,
+    114,
+    119,
+    121,
+    97,
+    118,
+    115
+   ]
+  },
+  "order": [
+   [
+    "BCBS-CreditValuation.pdf",
+    5
+   ],
+   [
+    "BCBS-CreditValuation.pdf",
+    3
+   ],
+   [
+    "BCBS-MarketRisk.pdf",
+    18
+   ],
+   [
+    "BCBS-CreditValuation.pdf",
+    1
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    142
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    147
+   ],
+   [
+    "BCBS-MarketRisk.pdf",
+    3
+   ],
+   [
+    "BCBS-MarketRisk.pdf",
+    67
+   ],
+   [
+    "BCBS-MarketRisk.pdf",
+    63
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    7
+   ],
+   [
+    "BCBS-CreditValuation.pdf",
+    6
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    113
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    5
+   ],
+   [
+    "BCBS-MarketRisk.pdf",
+    16
+   ],
+   [
+    "BCBS-CreditValuation.pdf",
+    7
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    84
+   ],
+   [
+    "BCBS-MarketRisk.pdf",
+    38
+   ],
+   [
+    "BCBS-MarketRisk.pdf",
+    7
+   ],
+   [
+    "BCBS-MarketRisk.pdf",
+    1
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    1
+   ],
+   [
+    "BCBS-MarketRisk.pdf",
+    90
+   ],
+   [
+    "BCBS-MarketRisk.pdf",
+    15
+   ],
+   [
+    "BCBS-MarketRisk.pdf",
+    120
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    82
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    51
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    141
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    32
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    146
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    114
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    119
+   ],
+   [
+    "BCBS-CreditValuation.pdf",
+    8
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    121
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    97
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    118
+   ],
+   [
+    "BCBS-Basel-Endgame.pdf",
+    115
+   ]
+  ],
+  "kept": {
+   "BCBS-CreditValuation.pdf": [
+    1,
+    5,
+    3,
+    8,
+    7,
+    6
+   ],
+   "BCBS-Basel-Endgame.pdf": [
+    115,
+    119,
+    114,
+    113,
+    142,
+    118,
+    7,
+    5,
+    84
+   ],
+   "BCBS-MarketRisk.pdf": [
+    18,
+    15,
+    90
+   ]
+  },
+  "cited": {
+   "BCBS-Basel-Endgame.pdf": [
+    115,
+    119,
+    114,
+    113,
+    118
+   ],
+   "BCBS-CreditValuation.pdf": [
+    8,
+    5,
+    7
+   ],
+   "BCBS-MarketRisk.pdf": [
+    18,
+    15
+   ]
+  }
+ },
+ "trace": [
+  {
+   "step_name": "query_planning",
+   "description": "Compile query obligations and explicit scopes",
+   "output": {
+    "intent": "factoid",
+    "obligations": [
+     {
+      "aspect_id": "a1",
+      "text": "How does the Basel framework treat credit valuation adjustment risk?",
+      "keywords": [
+       "Basel framework",
+       "credit valuation adjustment risk"
+      ],
+      "entity": "Basel framework",
+      "period": "December 2017",
+      "scope": "Global (minimum standards for banking regulation)"
+     },
+     {
+      "aspect_id": "a2",
+      "text": "How does the Basel framework treat credit valuation adjustment risk?",
+      "keywords": [
+       "how",
+       "does",
+       "the",
+       "basel",
+       "framework",
+       "treat",
+       "credit",
+       "valuation",
+       "... 2 more"
+      ],
+      "entity": "Basel Committee on Banking Supervision",
+      "period": "2017",
+      "scope": null
+     },
+     {
+      "aspect_id": "a3",
+      "text": "How does the Basel framework treat credit valuation adjustment risk?",
+      "keywords": [
+       "how",
+       "does",
+       "the",
+       "basel",
+       "framework",
+       "treat",
+       "credit",
+       "valuation",
+       "... 2 more"
+      ],
+      "entity": "Basel Committee on Banking Supervision",
+      "period": "2019",
+      "scope": null
+     }
+    ],
+    "tasks": [
+     {
+      "id": "T1",
+      "text": "Identify the treatment of credit valuation adjustment (CVA) risk in the Basel framework.",
+      "query_anchor": "credit valuation adjustment risk",
+      "operation": "lookup",
+      "obligation_ids": [
+       "a1"
+      ],
+      "source_roles": [
+       "Basel framework",
+       "credit valuation adjustment (CVA) risk"
+      ],
+      "required_fields": []
+     },
+     {
+      "id": "T2",
+      "text": "Compare the treatment of credit valuation adjustment (CVA) risk in the Basel III framework and the targeted revisions to the CVA risk framework.",
+      "query_anchor": "Basel framework",
+      "operation": "reconcile",
+      "obligation_ids": [
+       "a1"
+      ],
+      "source_roles": [
+       "Basel III framework",
+       "targeted revisions to the CVA risk framework"
+      ],
+      "required_fields": [
+       "entity",
+       "metric",
+       "period",
+       "unit",
+       "basis"
+      ]
+     },
+     {
+      "id": "T3",
+      "text": "Examine the document 'Targeted revisions to the credit valuation adjustment risk framework' for specific methodologies related to CVA risk.",
+      "query_anchor": "credit valuation adjustment risk",
+      "operation": "inspect",
+      "obligation_ids": [
+       "a1"
+      ],
+      "source_roles": [
+       "targeted revisions to the credit valuation adjustment risk framework",
+       "standardised approach (SA-CVA)",
+       "basic approach (BA-CVA)"
+      ],
+      "required_fields": []
+     }
+    ],
+    "notes": "The Basel framework treats credit valuation adjustment (CVA) risk through specific capital requirements and methodologies, such as the standardised approach (SA-CVA) and basic approach (BA-CVA), as outlined in the targeted revisions to the CVA risk framework.",
+    "limitations": [],
+    "duration_ms": 5609.0
+   }
+  },
+  {
+   "step_name": "routing_guard",
+   "description": "Guard document identity and period or version",
+   "output": {
+    "dropped_unknown": [],
+    "added_by_entity": [],
+    "excluded": [],
+    "fallback": false,
+    "global_escape": false,
+    "missing_requests": [],
+    "routed_doc_ids": [
+     "7aab9ad135",
+     "49dc125a27",
+     "9c3d8b2799"
+    ],
+    "duration_ms": 0.0
+   }
+  },
+  {
+   "step_name": "candidate_pages",
+   "description": "Find scoped source pages and independent lexical matches",
+   "output": {
+    "documents": {
+     "7aab9ad135": {
+      "available": 161,
+      "mode": "all",
+      "ranked_pages": [
+       7,
+       84,
+       1,
+       5,
+       6,
+       25,
+       32,
+       97,
+       "... 153 more"
+      ],
+      "requested_topic_hits": {},
+      "task_role_hits": {
+       "T1:Basel framework": [
+        1,
+        5
+       ],
+       "T1:credit valuation adjustment (CVA) risk": [
+        113,
+        142
+       ],
+       "T2:Basel III framework": [
+        1,
+        5
+       ],
+       "T2:targeted revisions to the CVA risk framework": [
+        6,
+        5
+       ],
+       "T3:targeted revisions to the credit valuation adjustment risk framework": [
+        6,
+        113
+       ],
+       "T3:standardised approach (SA-CVA)": [
+        118,
+        142
+       ],
+       "T3:basic approach (BA-CVA)": [
+        114,
+        116
+       ]
+      },
+      "selected": 161,
+      "navigation": {
+       "available": true,
+       "version": 1,
+       "matches": [
+        {
+         "title": "Standardised approach for credit risk",
+         "start_page": 7,
+         "level": 1,
+         "origin": "pdf_outline",
+         "confidence": 1.0,
+         "anchor_page": 7,
+         "end_page": 7,
+         "aspect_ids": [
+          "a1"
+         ],
+         "score": 1.0,
+         "selected_pages": [
+          7
+         ],
+         "specific": true
+        },
+        {
+         "title": "4. Recognition of credit risk mitigants",
+         "start_page": 84,
+         "level": 2,
+         "origin": "pdf_outline",
+         "confidence": 1.0,
+         "anchor_page": 84,
+         "end_page": 84,
+         "aspect_ids": [
+          "a1"
+         ],
+         "score": 1.0,
+         "selected_pages": [
+          84
+         ],
+         "specific": true
+        },
+        {
+         "title": "Standardised approach for credit risk",
+         "start_page": 7,
+         "level": 1,
+         "origin": "pdf_outline",
+         "confidence": 1.0,
+         "anchor_page": 7,
+         "end_page": 7,
+         "aspect_ids": [
+          "a2"
+         ],
+         "score": 1.0,
+         "selected_pages": [
+          7
+         ],
+         "specific": true
+        },
+        {
+         "title": "4. Recognition of credit risk mitigants",
+         "start_page": 84,
+         "level": 2,
+         "origin": "pdf_outline",
+         "confidence": 1.0,
+         "anchor_page": 84,
+         "end_page": 84,
+         "aspect_ids": [
+          "a2"
+         ],
+         "score": 1.0,
+         "selected_pages": [
+          84
+         ],
+         "specific": true
+        },
+        {
+         "title": "Standardised approach for credit risk",
+         "start_page": 7,
+         "level": 1,
+         "origin": "pdf_outline",
+         "confidence": 1.0,
+         "anchor_page": 7,
+         "end_page": 7,
+         "aspect_ids": [
+          "a3"
+         ],
+         "score": 1.0,
+         "selected_pages": [
+          7
+         ],
+         "specific": true
+        },
+        {
+         "title": "4. Recognition of credit risk mitigants",
+         "start_page": 84,
+         "level": 2,
+         "origin": "pdf_outline",
+         "confidence": 1.0,
+         "anchor_page": 84,
+         "end_page": 84,
+         "aspect_ids": [
+          "a3"
+         ],
+         "score": 1.0,
+         "selected_pages": [
+          84
+         ],
+         "specific": true
+        }
+       ],
+       "covered_aspects": [
+        "a1",
+        "a2",
+        "a3"
+       ],
+       "page_scores": {
+        "7": 1.0,
+        "84": 1.0,
+        "3": -1.0,
+        "8": 0.15,
+        "9": 0.15,
+        "13": 0.3,
+        "16": 0.15,
+        "25": 0.15,
+        "26": 0.15,
+        "27": 0.15,
+        "36": 0.15,
+        "46": 0.15,
+        "116": 0.15,
+        "118": 0.15,
+        "124": 0.15,
+        "126": 0.3,
+        "127": 0.15,
+        "128": 0.15,
+        "129": 0.15,
+        "130": 0.15,
+        "145": 0.15
+       },
+       "preferred_pages": [
+        7,
+        84
+       ],
+       "direct_pages": [],
+       "focused": true,
+       "focus_policy": "specific_request_only",
+       "unresolved_reference_count": 0
+      }
+     },
+     "49dc125a27": {
+      "available": 136,
+      "mode": "all",
+      "ranked_pages": [
+       18,
+       1,
+       7,
+       15,
+       16,
+       41,
+       43,
+       61,
+       "... 128 more"
+      ],
+      "requested_topic_hits": {},
+      "task_role_hits": {
+       "T1:Basel framework": [
+        1,
+        7
+       ],
+       "T1:credit valuation adjustment (CVA) risk": [
+        18,
+        15
+       ],
+       "T2:Basel III framework": [
+        61,
+        1
+       ],
+       "T2:targeted revisions to the CVA risk framework": [
+        7,
+        108
+       ],
+       "T3:targeted revisions to the credit valuation adjustment risk framework": [
+        7,
+        18
+       ],
+       "T3:standardised approach (SA-CVA)": [
+        43,
+        41
+       ],
+       "T3:basic approach (BA-CVA)": [
+        15,
+        127
+       ]
+      },
+      "selected": 136,
+      "navigation": {
+       "available": true,
+       "version": 1,
+       "matches": [
+        {
+         "title": "Terminology for credit valuation adjustment risk",
+         "start_page": 18,
+         "level": 2,
+         "origin": "pdf_outline",
+         "confidence": 1.0,
+         "anchor_page": 18,
+         "end_page": 18,
+         "aspect_ids": [
+          "a1"
+         ],
+         "score": 1.7889,
+         "selected_pages": [
+          18
+         ],
+         "specific": true
+        },
+        {
+         "title": "Equity risk",
+         "start_page": 116,
+         "level": 2,
+         "origin": "pdf_outline",
+         "confidence": 1.0,
+         "anchor_page": 116,
+         "end_page": 117,
+         "aspect_ids": [
+          "a1"
+         ],
+         "score": 0.7071,
+         "selected_pages": [],
+         "specific": false
+        },
+        {
+         "title": "Terminology for credit valuation adjustment risk",
+         "start_page": 18,
+         "level": 2,
+         "origin": "pdf_outline",
+         "confidence": 1.0,
+         "anchor_page": 18,
+         "end_page": 18,
+         "aspect_ids": [
+          "a2"
+         ],
+         "score": 1.7889,
+         "selected_pages": [
+          18
+         ],
+         "specific": true
+        },
+        {
+         "title": "Equity risk",
+         "start_page": 116,
+         "level": 2,
+         "origin": "pdf_outline",
+         "confidence": 1.0,
+         "anchor_page": 116,
+         "end_page": 117,
+         "aspect_ids": [
+          "a2"
+         ],
+         "score": 0.7071,
+         "selected_pages": [],
+         "specific": false
+        },
+        {
+         "title": "Terminology for credit valuation adjustment risk",
+         "start_page": 18,
+         "level": 2,
+         "origin": "pdf_outline",
+         "confidence": 1.0,
+         "anchor_page": 18,
+         "end_page": 18,
+         "aspect_ids": [
+          "a3"
+         ],
+         "score": 1.7889,
+         "selected_pages": [
+          18
+         ],
+         "specific": true
+        },
+        {
+         "title": "Equity risk",
+         "start_page": 116,
+         "level": 2,
+         "origin": "pdf_outline",
+         "confidence": 1.0,
+         "anchor_page": 116,
+         "end_page": 117,
+         "aspect_ids": [
+          "a3"
+         ],
+         "score": 0.7071,
+         "selected_pages": [],
+         "specific": false
+        }
+       ],
+       "covered_aspects": [
+        "a1",
+        "a2",
+        "a3"
+       ],
+       "page_scores": {
+        "18": 1.7888543819998317,
+        "3": -1.0,
+        "4": -1.0,
+        "5": -1.0,
+        "44": 0.15,
+        "47": 0.15,
+        "49": 0.15,
+        "51": 0.15,
+        "52": 0.15,
+        "53": 0.15,
+        "57": 0.15,
+        "63": 0.15,
+        "65": 0.3,
+        "98": 0.15,
+        "106": 0.3,
+        "120": 0.15
+       },
+       "preferred_pages": [
+        18
+       ],
+       "direct_pages": [],
+       "focused": true,
+       "focus_policy": "specific_request_only",
+       "unresolved_reference_count": 0
+      }
+     },
+     "9c3d8b2799": {
+      "available": 30,
+      "mode": "all",
+      "ranked_pages": [
+       1,
+       3,
+       5,
+       6,
+       7,
+       8,
+       9,
+       11,
+       "... 22 more"
+      ],
+      "requested_topic_hits": {},
+      "task_role_hits": {
+       "T1:Basel framework": [
+        5,
+        1
+       ],
+       "T1:credit valuation adjustment (CVA) risk": [
+        5,
+        7
+       ],
+       "T2:Basel III framework": [
+        5,
+        3
+       ],
+       "T2:targeted revisions to the CVA risk framework": [
+        5,
+        6
+       ],
+       "T3:targeted revisions to the credit valuation adjustment risk framework": [
+        3,
+        1
+       ],
+       "T3:standardised approach (SA-CVA)": [
+        8,
+        13
+       ],
+       "T3:basic approach (BA-CVA)": [
+        9,
+        11
+       ]
+      },
+      "selected": 30,
+      "navigation": {
+       "available": true,
+       "version": 1,
+       "matches": [
+        {
+         "title": "Targeted revisions to the credit valuation adjustment risk framework",
+         "start_page": 5,
+         "level": 1,
+         "origin": "pdf_outline",
+         "confidence": 1.0,
+         "anchor_page": 5,
+         "end_page": 5,
+         "aspect_ids": [
+          "a1"
+         ],
+         "score": 1.8898,
+         "selected_pages": [],
+         "specific": false
+        },
+        {
+         "title": "Targeted revisions to the credit valuation adjustment risk framework",
+         "start_page": 1,
+         "level": 2,
+         "origin": "source_heading",
+         "confidence": 0.9,
+         "anchor_page": 1,
+         "end_page": 4,
+         "aspect_ids": [
+          "a1"
+         ],
+         "score": 1.8898,
+         "selected_pages": [],
+         "specific": false
+        },
+        {
+         "title": "Targeted revisions to the credit valuation adjustment risk framework",
+         "start_page": 5,
+         "level": 1,
+         "origin": "pdf_outline",
+         "confidence": 1.0,
+         "anchor_page": 5,
+         "end_page": 5,
+         "aspect_ids": [
+          "a2"
+         ],
+         "score": 1.8898,
+         "selected_pages": [],
+         "specific": false
+        },
+        {
+         "title": "Targeted revisions to the credit valuation adjustment risk framework",
+         "start_page": 1,
+         "level": 2,
+         "origin": "source_heading",
+         "confidence": 0.9,
+         "anchor_page": 1,
+         "end_page": 4,
+         "aspect_ids": [
+          "a2"
+         ],
+         "score": 1.8898,
+         "selected_pages": [],
+         "specific": false
+        },
+        {
+         "title": "Targeted revisions to the credit valuation adjustment risk framework",
+         "start_page": 5,
+         "level": 1,
+         "origin": "pdf_outline",
+         "confidence": 1.0,
+         "anchor_page": 5,
+         "end_page": 5,
+         "aspect_ids": [
+          "a3"
+         ],
+         "score": 1.8898,
+         "selected_pages": [],
+         "specific": false
+        },
+        {
+         "title": "Targeted revisions to the credit valuation adjustment risk framework",
+         "start_page": 1,
+         "level": 2,
+         "origin": "source_heading",
+         "confidence": 0.9,
+         "anchor_page": 1,
+         "end_page": 4,
+         "aspect_ids": [
+          "a3"
+         ],
+         "score": 1.8898,
+         "selected_pages": [],
+         "specific": false
+        }
+       ],
+       "covered_aspects": [],
+       "page_scores": {
+        "3": -1.0,
+        "11": 0.15,
+        "13": 0.15,
+        "21": 0.15,
+        "22": 0.15,
+        "24": 0.3,
+        "26": 0.3,
+        "27": 0.15,
+        "28": 0.15,
+        "29": 0.15,
+        "30": 0.15,
+        "31": 0.15
+       },
+       "preferred_pages": [],
+       "direct_pages": [],
+       "focused": false,
+       "focus_policy": "specific_request_only",
+       "unresolved_reference_count": 0
+      }
+     }
+    },
+    "omitted_cards": 0,
+    "total": 327,
+    "escape_pages": [],
+    "duration_ms": 1172.0
+   }
+  },
+  {
+   "step_name": "page_survey",
+   "description": "Survey finite page cards with visible omissions",
+   "output": {
+    "batches": 0,
+    "failed_batches": 0,
+    "cards_surveyed": 0,
+    "lexical_added": 0,
+    "truncated": 6,
+    "limitations": [],
+    "selection_mode": "local",
+    "method": "initial source FTS and dense ranks plus obligation lexical matches",
+    "navigation_only": true,
+    "metadata_matches": 18,
+    "metadata_focused_documents": [
+     "7aab9ad135",
+     "49dc125a27"
+    ],
+    "picked_pages": 12,
+    "duration_ms": 0.0
+   }
+  },
+  {
+   "step_name": "element_retrieval",
+   "description": "Recover exact source elements and dependencies",
+   "output": {
+    "total": 99,
+    "by_source": {
+     "survey_high": 0,
+     "hybrid": 40,
+     "structure": 0,
+     "survey_lexical": 69,
+     "source_continuation": 0,
+     "survey_medium": 0,
+     "source_dependency": 0,
+     "escape": 0
+    },
+    "task_role_hits": 28,
+    "source_acronym_hints": [
+     "CVA",
+     "Credit valuation adjustment",
+     "the Basel III standards relates to the credit valuation adjustment",
+     "external hedges that are included in the credit valuation adjustment"
+    ],
+    "duration_ms": 4047.0
+   }
+  },
+  {
+   "step_name": "element_triage",
+   "description": "Order bounded verification work with local relevance scores",
+   "output": {
+    "scored": 99,
+    "pairs": 99,
+    "auto_kept": 0,
+    "auto_dropped": 0,
+    "dropped_budget": 0,
+    "scores": [
+     [
+      "49dc125a27:p0003:e017",
+      0.6581218242645264
+     ],
+     [
+      "49dc125a27:p0016:e000",
+      -0.23455634713172913
+     ],
+     [
+      "49dc125a27:p0038:e006",
+      -0.4248010516166687
+     ],
+     [
+      "49dc125a27:p0063:e007",
+      0.6033650636672974
+     ],
+     [
+      "49dc125a27:p0067:e001",
+      0.658112108707428
+     ],
+     [
+      "49dc125a27:p0090:e008",
+      -1.4015520811080933
+     ],
+     [
+      "49dc125a27:p0120:e007",
+      -3.5624685287475586
+     ],
+     [
+      "7aab9ad135:p0001:e000",
+      -1.1714407205581665
+     ],
+     "... 91 more"
+    ],
+    "limitations": [],
+    "metadata_boosted": 29,
+    "middle": 99,
+    "task_queue_counts": {
+     "T1": 8,
+     "T2": 8,
+     "T3": 11
+    },
+    "task_selected_counts": {
+     "T1": 8,
+     "T2": 8,
+     "T3": 11
+    },
+    "duration_ms": 1563.0
+   }
+  },
+  {
+   "step_name": "element_verification",
+   "description": "Verify source-visible evidence against obligations",
+   "output": {
+    "batches": 13,
+    "failed_batches": 0,
+    "elements_seen": 99,
+    "elements_kept": 41,
+    "unknown_ids_ignored": 0,
+    "invalid_quotes": 0,
+    "background_dropped": 15,
+    "duplicates_merged": 7,
+    "omitted_fragments": 0,
+    "limitations": [],
+    "prepared_candidates": 99,
+    "remaining_candidates": 0,
+    "direct_answer_found": false,
+    "verification_task_coverage": [
+     {
+      "task_id": "T1",
+      "verified_evidence_count": 31,
+      "minimum_evidence_count": 1,
+      "status": "minimum_met"
+     },
+     {
+      "task_id": "T2",
+      "verified_evidence_count": 17,
+      "minimum_evidence_count": 2,
+      "status": "minimum_met"
+     },
+     {
+      "task_id": "T3",
+      "verified_evidence_count": 16,
+      "minimum_evidence_count": 1,
+      "status": "minimum_met"
+     }
+    ],
+    "artifact_id": "verified_evidence",
+    "duration_ms": 7718.0
+   }
+  },
+  {
+   "step_name": "answer_generation",
+   "description": "Select complementary evidence and draft supported claims",
+   "output": {
+    "selected": 21,
+    "omitted": 20,
+    "redundant_removed": 0,
+    "input_budget_units": 11588,
+    "obligation_evidence_counts": {
+     "a1": 21,
+     "a2": 0,
+     "a3": 0
+    },
+    "token_budget_method": "conservative_utf8_bytes",
+    "draft_claims": 19,
+    "writer_source_ids": [
+     "9c3d8b2799:p0001:e000",
+     "7aab9ad135:p0115:e009",
+     "9c3d8b2799:p0005:e003",
+     "7aab9ad135:p0119:e001",
+     "9c3d8b2799:p0003:e000",
+     "7aab9ad135:p0114:e000",
+     "9c3d8b2799:p0003:e002",
+     "9c3d8b2799:p0003:e001",
+     "... 13 more"
+    ],
+    "duration_ms": 19266.0
+   }
+  },
+  {
+   "step_name": "answer_verification",
+   "description": "Check claim support and deterministic calculations",
+   "output": {
+    "accepted": 19,
+    "gaps": 0,
+    "rejected": 0,
+    "background_removed": 0,
+    "requested_topics": [
+     {
+      "id": "T1",
+      "text": "Identify the treatment of credit valuation adjustment (CVA) risk in the Basel framework.",
+      "operation": "lookup",
+      "status": "supported",
+      "claim_ids": [
+       "c1",
+       "c2",
+       "c3",
+       "c4",
+       "c5",
+       "c6",
+       "c7",
+       "c8",
+       "... 11 more"
+      ]
+     },
+     {
+      "id": "T2",
+      "text": "Compare the treatment of credit valuation adjustment (CVA) risk in the Basel III framework and the targeted revisions to the CVA risk framework.",
+      "operation": "reconcile",
+      "status": "unresolved",
+      "claim_ids": []
+     },
+     {
+      "id": "T3",
+      "text": "Examine the document 'Targeted revisions to the credit valuation adjustment risk framework' for specific methodologies related to CVA risk.",
+      "operation": "inspect",
+      "status": "supported",
+      "claim_ids": [
+       "c1",
+       "c2",
+       "c3",
+       "c4",
+       "c5",
+       "c6",
+       "c7",
+       "c8",
+       "... 11 more"
+      ]
+     }
+    ],
+    "ledger": {},
+    "facts_restored_after_check": 0,
+    "source_core_repair": {
+     "attempted": 0,
+     "accepted": 0,
+     "calls": 0
+    },
+    "claim_decisions": {
+     "c1": {
+      "claim_id": "c1",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c2": {
+      "claim_id": "c2",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c3": {
+      "claim_id": "c3",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c4": {
+      "claim_id": "c4",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c5": {
+      "claim_id": "c5",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c6": {
+      "claim_id": "c6",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c7": {
+      "claim_id": "c7",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c8": {
+      "claim_id": "c8",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c9": {
+      "claim_id": "c9",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c10": {
+      "claim_id": "c10",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c11": {
+      "claim_id": "c11",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c12": {
+      "claim_id": "c12",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c13": {
+      "claim_id": "c13",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c14": {
+      "claim_id": "c14",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c15": {
+      "claim_id": "c15",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c16": {
+      "claim_id": "c16",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c17": {
+      "claim_id": "c17",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c18": {
+      "claim_id": "c18",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     },
+     "c19": {
+      "claim_id": "c19",
+      "verdict": "supported",
+      "relevance": "direct",
+      "reason_code": "grounded",
+      "repair_quote_indexes": []
+     }
+    },
+    "check_batches": 1,
+    "duration_ms": 11469.0
+   }
+  },
+  {
+   "step_name": "citation_render",
+   "description": "Render immutable source citations and full writer context",
+   "output": {
+    "citations": 19,
+    "evidence_cited": 14,
+    "evidence_total": 21,
+    "verified_not_in_writer_context": 20,
+    "duration_ms": 0.0
+   }
+  }
+ ]
+}
