@@ -19,12 +19,15 @@ from kb.config import get_settings  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def clear_provider_cooldowns():
+    from kb.access import _hits
     from kb.llm import _cooldowns, _token_log
     _cooldowns.clear()
     _token_log.clear()
+    _hits.clear()  # every TestClient shares one address, so API tests would use up each other's rate limits
     yield
     _cooldowns.clear()
     _token_log.clear()
+    _hits.clear()
 
 
 @pytest.fixture

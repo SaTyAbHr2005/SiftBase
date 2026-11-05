@@ -41,6 +41,18 @@ Local indexing through the existing CLI:
 
 That CLI reads process environment variables; the server launcher loads `.env`. The source dataset remains external to the repository.
 
+### Access and limits
+
+| Variable | Default | What it does |
+|---|---|---|
+| `KB_API_KEYS` | none | Comma-separated keys. When set, every request needs one in `X-API-Key` or `Authorization: Bearer`. Make each with `python -c "import secrets; print(secrets.token_urlsafe(32))"`. |
+| `KB_AUTH` | none | On Render (`RENDER` set) a service with no keys answers 503. Set `off` only to run it open on purpose. |
+| `KB_QUERY_PER_HOUR` | 20 | Queries per key per hour (per client address without keys). |
+| `KB_QUERIES_PER_DAY` | 25 | Queries per 24 hours for all callers together, sized to the free model quota (about 30 answered queries a day). |
+| `KB_INDEX_PER_DAY` | 5 | Uploads per key per 24 hours. |
+
+A request over a limit gets HTTP 429 with `Retry-After`. `0` turns a limit off. The counts live in the server's memory, so they reset when the service restarts.
+
 ## Validation
 
 ```bash

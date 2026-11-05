@@ -23,6 +23,8 @@ services:
         value: extractive
       - key: KB_PARSE_WORKERS
         value: "1"
+      - key: KB_API_KEYS                   # required: without it every request gets 503 (see README, Access and limits)
+        sync: false
       - key: CLOUDFLARE_API_TOKEN
         sync: false
       - key: CLOUDFLARE_ACCOUNT_ID
