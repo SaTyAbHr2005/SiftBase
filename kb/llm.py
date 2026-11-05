@@ -163,6 +163,7 @@ PACE_OUTPUT_TOKENS = 400  # share of the output limit counted up front: most cal
 PACE_POLL_S = 0.5
 MAX_PACE_WAIT_S = 60
 WRITER_CALLS = ("answer", "answer_verify")
+SPLIT_CALLS = WRITER_CALLS + ("verify",)  # callers that split a request cut off at the output limit
 RATE_LIMIT_COOLDOWN_S = 60
 SERVER_ERROR_COOLDOWN_S = 30
 DEADLINE_CUT_COOLDOWN_S = 5
@@ -264,6 +265,11 @@ class ChainLLM(LLM):
                     except (requests.RequestException, LLMError, ValueError, KeyError, IndexError) as e:
                         errors.append(f"{provider.label}: {str(e)[:120]}")
                         failed_here.add(provider.label)
+                        # A reply cut off with the full output limit would be cut off on every provider: for calls whose
+                        # caller splits a cut request, stop here and keep the reply so the split can run in time.
+                        if (name in SPLIT_CALLS and limit >= max_tokens
+                                and (self.last_response or {}).get("finish_reason") == "length"):
+                            raise LLMError(f"{name}: reply cut off at {limit} output tokens") from e
                 now = time.monotonic()
                 if tried or getattr(self, "deadline", float("inf")) <= now or all(_cooling_until(p) - now > MAX_PACE_WAIT_S for p, _ in usable):
                     break

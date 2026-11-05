@@ -236,6 +236,38 @@ def test_a_writer_moves_on_when_the_better_provider_is_out_for_longer(tmp_path, 
     assert calls == [B.url]
 
 
+def _cut_reply():
+    cut = Reply(content='{"sections": [{"text": "unfinished')
+    cut.json = lambda: {"choices": [{"message": {"content": cut.content}, "finish_reason": "length"}],
+                        "usage": {"prompt_tokens": 10, "completion_tokens": 5400}}
+    return cut
+
+
+def test_a_cut_reply_still_falls_through_when_the_provider_had_less_room_or_the_caller_cannot_split(tmp_path, post):
+    calls, replies = post
+    small = Provider("s", "https://s.test/chat", "model-s", "key-s", max_total=1000)
+    replies[small.url], replies[A.url], replies[B.url] = _cut_reply(), _cut_reply(), Reply()
+    assert chain(tmp_path, small, B).complete_json("s", "u", name="answer", max_tokens=2000) == {"ok": True}
+    assert calls == [small.url, B.url]  # the small provider was given under 1,000 of the 2,000 asked
+    assert chain(tmp_path, A, B).complete_json("s", "u", name="doc_card") == {"ok": True}
+    assert calls[-2:] == [A.url, B.url]  # ingest calls have no split to fall back on
+
+
+def test_a_reply_cut_off_at_the_output_limit_stops_the_chain_so_the_caller_can_split(tmp_path, post):
+    calls, replies = post
+    cut = _cut_reply()
+    replies[A.url], replies[B.url] = cut, Reply()
+    llm = chain(tmp_path, A, B)
+    with pytest.raises(LLMError, match="cut off"):
+        llm.complete_json("s", "u", name="answer")
+    assert calls == [A.url] and llm.last_response["finish_reason"] == "length"
+    from kb.query.errors import QueryError
+    from kb.query.provider import SharedQueryClient
+    with pytest.raises(QueryError) as caught:  # what the writer splits on
+        SharedQueryClient(chain(tmp_path, A, B)).complete_json("s", "u2", name="answer", max_tokens=5400)
+    assert caught.value.code == "MODEL_SCHEMA" and calls == [A.url, A.url]
+
+
 def test_writing_uses_its_own_model_order(tmp_path, post):
     calls, replies = post
     replies[A.url], replies[B.url] = Reply(), Reply()

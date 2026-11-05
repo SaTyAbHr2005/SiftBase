@@ -7,7 +7,7 @@ from .plan import _call,_call_many,field
 from .settings import value, budget
 from .types import Claim, AnswerDraft
 from .requirements import requested_topics, audit_topic_coverage
-from .worksheet import TASK_SYSTEM, bind_results
+from .worksheet import TASK_SYSTEM, bind_results, merge_task_results
 from .utils import get, estimate_tokens, compact, quote_valid, narrow_factoid, answer_spans, display_source
 
 ABSTAIN_TEXT = "No supporting information was found within the searched collection scope."
@@ -377,9 +377,12 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None):
     def split(payload):
         if len(payload["facts"])>1:
             half=len(payload["facts"])//2
+            # Each half gets fewer statements than the cut call, or it is cut off again; a worksheet keeps every span.
+            cap=max(4,payload["max_statements"]//2+3)
             return [{**payload,"short_answer":payload["short_answer"] and i==0,"facts":part,
-                     "max_statements":len(part)+2+3*(payload["short_answer"] and i==0),
-                     "evidence":block({f["evidence_id"] for f in part})} for i,part in enumerate((payload["facts"][:half],payload["facts"][half:]))]
+                     "max_statements":min(cap,len(part)+2+3*(payload["short_answer"] and i==0)),
+                     "evidence":payload["evidence"] if payload["role"]=="task_worksheet" else block({f["evidence_id"] for f in part})}
+                    for i,part in enumerate((payload["facts"][:half],payload["facts"][half:]))]
         if not payload["facts"] and len(payload["evidence"])>1:
             half=len(payload["evidence"])//2
             return [{**payload,"short_answer":payload["short_answer"] and i==0,"evidence":part,
@@ -469,7 +472,7 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None):
                                                "facts_restored_verbatim":restored,
                                                "facts_trimmed":[{"text":f["text"],"reason":why} for f,why in trimmed]})
     partial=limits or any(raw.get("status")=="partial" for _,raw in raws)
-    worksheet=bind_results(plan.tasks,[r for _,raw in raws for r in raw.get('task_results',[])],numbered,spans) if plan.tasks else []
+    worksheet=bind_results(plan.tasks,merge_task_results([raw.get('task_results',[]) for _,raw in raws]),numbered,spans) if plan.tasks else []
     if ctx and worksheet:ctx.save('task_worksheet',worksheet)
     return AnswerDraft(claims,"partial" if partial else "answered",limits,topics,facts=facts,worksheet=worksheet)
 

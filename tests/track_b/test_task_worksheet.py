@@ -71,6 +71,42 @@ def test_advisory_inventory_allows_qualitative_finding_and_no_mandatory_restorat
     assert len(checked.claims)==1 and checked.worksheet[0]['completion']=='supported'
 
 
+def test_a_cut_off_worksheet_splits_into_smaller_halves_that_keep_all_evidence_and_merge_task_inputs(tmp_path):
+    store=MemoryStore({'d':[f'Run {i} took {i+2} seconds.' for i in range(6)]})
+    ev={f'E{i+1}':Evidence(e,['a1']) for i,e in enumerate(store.elements)}
+    plan=task_plan('Assess run times')
+    seen=[]
+    def respond(n,p):
+        if n=='answer':
+            seen.append((p['max_statements'],len(p['evidence'])))
+            if len(seen)==1:
+                raise ValueError('JSON cut off at the output limit')
+            f=p['facts'][0]
+            return {'sections':[{'heading':'Runs','statements':[{'kind':'finding','text':f['text'],'obligation_ids':['a1'],
+                    'cites':[{'evidence_id':f['evidence_id'],'span_ids':[f['span_id']]}]}]}],
+                    'task_results':[{'task_id':'T1','status':'supported','inputs':[{'evidence_id':f['evidence_id'],'span_id':f['span_id']}]}]}
+        return {'verdicts':[{'claim_id':c['claim_id'],'verdict':'supported'} for c in p['claims']]}
+    draft=generate_answer(FakeLLM(respond),plan.aspects[0].text,plan,ev,{},settings(tmp_path,analytical_writer_mode='synthesis'))
+    (first,evidence),*halves=seen
+    assert len(halves)==2 and all(m<first and e==evidence for m,e in halves)  # smaller, and every span still offered
+    task=draft.worksheet[0]
+    assert task['status']!='unresolved' and len(task['inputs'])==2  # one task's inputs from both halves, merged
+
+
+def test_task_rows_merge_across_split_replies_but_a_repeat_inside_one_reply_stays():
+    from kb.query.worksheet import merge_task_results
+    a,b={'task_id':'T1','inputs':[{'evidence_id':'E1'}]},{'task_id':'T1','inputs':[{'evidence_id':'E2'}]}
+    row,=merge_task_results([[a],[b]])
+    assert row['inputs']==[{'evidence_id':'E1'},{'evidence_id':'E2'}]
+    assert merge_task_results([[a,b]])==[a,b]
+    empty={'task_id':'T1','status':'unresolved','varying_field':None,'inputs':[]}
+    found={'task_id':'T1','status':'supported','varying_field':'period','inputs':[{'evidence_id':'E1','span_id':'S1'}]}
+    again={'task_id':'T1','status':'supported','varying_field':None,'inputs':[{'evidence_id':'E1','span_id':'S1'}]}
+    row,=merge_task_results([[empty],[found],[again]])
+    assert row['status']=='supported' and row['varying_field']=='period'  # the half that found it decides
+    assert row['inputs']==[{'evidence_id':'E1','span_id':'S1'}]  # one span cited twice is still one source
+
+
 def test_unsupported_claim_outside_inventory_is_not_resurrected_after_check(tmp_path):
     store=MemoryStore({'d':['The study uses one exchange.']});ev={'E1':Evidence(store.elements[0],['a1'])}
     plan=task_plan('Assess generalisation')

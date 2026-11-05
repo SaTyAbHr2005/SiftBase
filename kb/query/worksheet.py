@@ -43,6 +43,39 @@ def compile_tasks(query, aspects, proposed):
     return tasks
 
 
+# A finding outranks no finding; a contradiction outranks support, so a conflict between halves fails closed.
+STATUS_RANK = ['not_established_in_inspected_evidence', 'unresolved', 'incomparable', 'supported', 'corroborated',
+               'contradicted']
+
+
+def merge_task_results(replies):
+    """One row per task across the replies of a split writer call: inputs joined once each, the strongest
+    status and the first stated varying field. A task repeated inside one reply stays repeated, so
+    bind_results still marks it unresolved."""
+    rank = lambda r: STATUS_RANK.index(r.get('status')) if r.get('status') in STATUS_RANK else -1
+    out, first = [], {}
+    for rows in replies:
+        here = set()
+        for row in rows if isinstance(rows, list) else []:
+            task = row.get('task_id') if isinstance(row, dict) else None
+            if isinstance(task, str) and task in first and task not in here:
+                kept = first[task]
+                inputs = []
+                for x in (x for r in (kept, row) for x in (r.get('inputs') if isinstance(r.get('inputs'), list) else [])):
+                    if x not in inputs:
+                        inputs.append(x)
+                merged = {**kept, 'inputs': inputs, 'status': max((kept, row), key=rank).get('status'),
+                          'varying_field': kept.get('varying_field') or row.get('varying_field')}
+                first[task] = out[next(i for i, r in enumerate(out) if r is kept)] = merged
+            else:
+                out.append(row)
+                if isinstance(task, str):
+                    first.setdefault(task, row)
+            if isinstance(task, str):
+                here.add(task)
+    return out
+
+
 def bind_results(tasks, raw, numbered, spans):
     """Resolve IDs to source offsets; comparisons fail closed on unknown/mismatched scopes.
 
