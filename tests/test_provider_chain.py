@@ -80,6 +80,16 @@ def test_a_provider_timing_out_on_its_own_gets_the_full_cooldown(tmp_path, post)
     assert llm_mod._cooling_until(A) - llm_mod.time.monotonic() > llm_mod.DEADLINE_CUT_COOLDOWN_S
 
 
+def test_a_timeout_without_a_deadline_gets_the_full_cooldown_even_when_the_clock_ticks(tmp_path, post, monkeypatch):
+    _, replies = post
+    replies[A.url] = llm_mod.requests.ReadTimeout("slow")
+    clock = iter(range(1000, 2000))  # every reading of the clock is a little later than the last
+    monkeypatch.setattr(llm_mod.time, "monotonic", lambda: next(clock) / 10)
+    with pytest.raises(LLMError):
+        chain(tmp_path, A).complete_json("s", "u", name="answer")
+    assert llm_mod._cooldowns[A.label] - llm_mod.time.monotonic() > llm_mod.DEADLINE_CUT_COOLDOWN_S
+
+
 @pytest.mark.parametrize("failure", [llm_mod.requests.ConnectTimeout("no route"), llm_mod.requests.ConnectionError("down")])
 def test_a_provider_that_cannot_be_reached_gets_the_full_cooldown_inside_a_deadline(tmp_path, post, failure):
     _, replies = post

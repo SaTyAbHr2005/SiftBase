@@ -303,7 +303,10 @@ class ChainLLM(LLM):
         with lf_generation(name, provider.model, {"system": clip(system, 2000), "user": clip(user, 4000)}) as gen:
             try:
                 with _semaphore(s.llm_concurrency):
-                    remaining=min(s.llm_timeout_s,max(0.001,getattr(self,"deadline",time.monotonic()+s.llm_timeout_s)-time.monotonic()))*share
+                    # One clock reading: two could differ, making a call with no deadline look cut short by one.
+                    deadline=getattr(self,"deadline",None)
+                    left=s.llm_timeout_s if deadline is None else max(0.001,deadline-time.monotonic())
+                    remaining=min(s.llm_timeout_s,left)*share
                     try:
                         resp = requests.post(endpoint, headers=headers, json=payload, timeout=(min(5, remaining), remaining))
                     except requests.RequestException as exc:
