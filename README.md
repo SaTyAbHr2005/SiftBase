@@ -4,30 +4,28 @@
 
 A smart knowledge base for AI agents that goes beyond top-k RAG. The API exposes exactly POST /index and POST /query. The query path has ten stages, exact source fragments, coverage limitations, structured claim verification, and separate Langfuse observations.
 
-No 0.95 accuracy result or production readiness is claimed.
+It runs entirely on free model tiers. The accuracy target (80% answer precision and recall on the 8-question development set) is not met yet; [the project guide](docs/PROJECT.md) has every measured run and how much runs vary.
 
-**Read [the project guide](docs/PROJECT.md) first** for the code structure, current status, known bugs and next steps.
+**Read [the project guide](docs/PROJECT.md) first** for the code structure, current status, known bugs and next steps. Deployment is in [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Setup
 
-Python 3.12 is verified locally; the pinned RapidOCR package requires Python below 3.13. Use an isolated environment and install the shared requirements:
+Python 3.10 to 3.12 (CI and Render use 3.10); the pinned RapidOCR package requires Python below 3.13. Use an isolated environment and install the shared requirements:
 
 ```bash
-python3.12 -m venv .venv
+python -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-Create `.env` and add a key for at least one free provider, plus your Langfuse credentials. Never commit `.env`.
+Create `.env` and add your provider keys, plus your Langfuse credentials. Never commit `.env`.
 
-| Provider | Add to `.env` | Default model |
+| Provider | Add to `.env` | Used for |
 |---|---|---|
-| Cloudflare Workers AI | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | `@cf/qwen/qwen3-30b-a3b-fp8` |
-| Groq | `GROQ_API_KEY` | `openai/gpt-oss-120b`, then `openai/gpt-oss-20b` |
-| OpenRouter | `OPENROUTER_API_KEY` | `openrouter/free` |
-| Mistral | `MISTRAL_API_KEY` | `ministral-14b-latest`, then `ministral-8b-latest` |
-| Gemini | `GEMINI_API_KEY` | `gemini-3.5-flash` |
+| Cloudflare Workers AI | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | `@cf/qwen/qwen3-30b-a3b-fp8` plans, checks sources and writes answers. Needed for usable answers. |
+| Groq | `GROQ_API_KEY` | Fallback (`openai/gpt-oss-20b`, `qwen/qwen3.8-27b`) and the scoring judge (`openai/gpt-oss-120b`) |
+| OpenRouter, Mistral, Gemini | `OPENROUTER_API_KEY`, `MISTRAL_API_KEY`, `GEMINI_API_KEY` | Extra fallbacks, used only with `KB_PRIVATE=0` (they may log or train on your documents) |
 
-Each call tries the providers in that order and moves on after a rate limit, outage, bad key or invalid reply. Providers without a key are skipped. To change the order or models, set `KB_LLM_PROVIDERS`, for example `groq,gemini:gemini-3.5-flash-lite`. Mistral and Gemini free tiers can use your content for training, so leave them out for private documents. `python scripts/check_llm.py` makes one small call to each provider to test your keys.
+Each call tries the providers in order and moves on after a rate limit, outage, bad key or invalid reply. Providers without a key are skipped. To change the order or models, set `KB_LLM_PROVIDERS`, for example `cloudflare,groq:openai/gpt-oss-20b`. `python scripts/check_llm.py` makes one small call to each provider to test your keys.
 
 ```bash
 .venv/bin/python -m scripts.serve --env-file .env --host 127.0.0.1 --port 8000
