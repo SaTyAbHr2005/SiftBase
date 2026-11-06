@@ -1,5 +1,5 @@
 import type { QueryResult } from "./answer.ts";
-import type { RunPages } from "./pan.ts";
+import type { RunPages } from "./stream.ts";
 import corpus from "../data/corpus.json";
 import run from "../data/recorded-run.json";
 
@@ -44,6 +44,7 @@ export const RUNS = [
   { name: "run_fix4", date: "2026-11-02", code: "310f4f6", ap: 72.5, ar: 32.2, cp: "52.7%", cr: "64.1%", time: "44 s / 183 s" },
   { name: "run_wait8b", date: "2026-11-04", code: "0cf3941", ap: 46.2, ar: 26.5, cp: "54.3%", cr: "62.9%", time: "40 s / 76 s" },
   { name: "run_rep_b", date: "2026-11-05", code: "61a8118", ap: 48.2, ar: 22.7, cp: "41.7%", cr: "59.0%", time: "34 s / 56 s" },
+  { name: "run_rep_c", date: "2026-11-05", code: "61a8118", ap: 47.4, ar: 11.6, cp: "45.6%", cr: "60.8%", time: "38 s / 130 s" },
 ] as const;
 
 // Written for this site; never taken from the benchmark file.
@@ -55,7 +56,7 @@ export const EXAMPLES = [
 ];
 
 // One recorded run of a question written for this site (never a benchmark question),
-// made with scripts/record_run.py. Every count in the pan comes from it.
+// made with scripts/record_run.py. Every count in the stream comes from it.
 export const RECORDED = run as unknown as QueryResult & {
   question: string; recorded_at: string; funnel: Record<string, number>; pages: RunPages;
 };
@@ -67,34 +68,34 @@ const keptPages = Object.values(RECORDED.pages.kept).reduce((t, p) => t + p.leng
 const gatheredPages = RECORDED.pages.order.length;
 const pages = corpus.documents.reduce((t, d) => t + d.pages, 0);
 
-// The pan's captions: the pour, then one per trace step, each with the run's real count.
+// The stream's captions: the falls, then one per trace step, each with the run's real count.
 export const BEAT_TEXT = [
-  { id: "pour", n: "00", title: "The pour", count: pages, label: "pages in the pan",
-    line: `${corpus.documents.length} documents, ${n(pages)} pages. One chip of gravel for every page.` },
+  { count: pages, label: "pages pour in",
+    line: `${corpus.documents.length} documents, ${n(pages)} pages, all at the top of the falls.` },
   { count: pages, label: "pages, nothing ruled out yet",
     line: `A model reads the question “${RECORDED.question}” and plans its aspects, tasks and likely documents.` },
-  { count: f.documents_routed, label: "documents kept in the search",
-    line: `${routed.join(", ")}. The other ${corpus.documents.length - f.documents_routed} documents sink and darken.` },
-  { count: f.candidate_pages, label: "candidate pages",
-    line: "The first wash: every page outside those documents goes over the lip." },
-  { count: f.pages_picked, label: "pages picked by the survey",
+  { count: f.documents_routed, label: `of ${corpus.documents.length} documents stay in the stream`,
+    line: `${routed.join(", ")}. The other ${corpus.documents.length - f.documents_routed} documents run off down another channel.` },
+  { count: f.candidate_pages, label: `of ${n(pages)} pages are candidates`,
+    line: "The first pool keeps only pages from those documents. Everything else goes over the lip." },
+  { count: f.pages_picked, label: `of ${f.candidate_pages} pages settle on the bed`,
     line: "Chosen locally from the rankings and term matches, before a single passage is read." },
-  { count: f.passages_gathered, label: "passages gathered",
+  { count: f.passages_gathered, label: `passages from ${gatheredPages} pages`,
     line: `Paragraphs and tables from ${gatheredPages} pages, each with its document, page and position.` },
   { count: f.passages_gathered, label: "passages in order",
-    line: "The reranker sorts them, best at the centre. The order is a queue to check, never proof." },
-  { count: f.passages_kept, label: `of ${f.passages_checked} passages kept`,
-    line: `A model checks each one against the question. ${f.passages_kept} hold, from ${keptPages} pages; ${f.passages_checked - f.passages_kept} wash out.` },
-  { count: f.claims_drafted, label: "claims written",
+    line: "The reranker puts the most relevant first. The order is a queue to check, never proof." },
+  { count: f.passages_kept, label: `of ${f.passages_checked} passages hold`,
+    line: `A model checks each one against the question. ${f.passages_kept} hold, from ${keptPages} pages; ${f.passages_checked - f.passages_kept} wash away with the silt.` },
+  { count: f.claims_drafted, label: `claims written from ${f.passages_kept} passages`,
     line: `The writer makes ${f.claims_drafted} claims, each tied to evidence that passed the check.` },
   { count: f.claims_accepted, label: `of ${f.claims_drafted} claims held`,
     line: f.claims_withdrawn
-      ? `${f.claims_withdrawn} claim had no support. It dulled to pyrite and was removed.`
-      : "Every claim is checked against its evidence. One without support would dull to pyrite and be removed; in this run none was." },
-  { count: f.pages_cited, label: "pages cited",
-    line: "The gold left in the pan. Each citation points at a page that was actually read." },
+      ? `${f.claims_withdrawn} claim had no support, so it washed away and left the answer.`
+      : "Every claim is checked against its evidence. One without support would wash away and leave the answer; in this run none did." },
+  { count: f.pages_cited, label: `of ${n(pages)} pages cited`,
+    line: "The gold that gets picked. Each citation points at a page that was actually read." },
 ].map((b, i) => ({
-  id: i ? `step-${i}` : "pour", n: String(i).padStart(2, "0"), title: i ? STEPS[i - 1].title : "The pour",
+  id: i ? `step-${i}` : "falls", n: String(i).padStart(2, "0"), title: i ? STEPS[i - 1].title : "The falls",
   name: i ? STEPS[i - 1].name : "", ...b,
 }));
 

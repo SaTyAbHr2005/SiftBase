@@ -6,9 +6,6 @@ import { EXAMPLES } from "@/lib/content.ts";
 import { plainLimit, type QueryError, type QueryResult, type TraceStep } from "@/lib/answer.ts";
 
 export const ASK_EVENT = "siftbase:ask";
-// Fired with the number of trace steps when a live answer arrives (0 when it is cleared),
-// so the binder's numbered tabs can open the matching trace step.
-export const TRACE_EVENT = "siftbase:trace";
 
 const MIN = 8;
 
@@ -41,7 +38,6 @@ export default function AskConsole() {
     const started = Date.now();
     setNow(started);
     setState({ kind: "running", query, started });
-    window.dispatchEvent(new CustomEvent(TRACE_EVENT, { detail: 0 }));
     let next: State;
     try {
       const res = await fetch("/api/query", {
@@ -71,7 +67,6 @@ export default function AskConsole() {
     if (abort.current !== controller) return;
     abort.current = null;
     setState(next);
-    if (next.kind === "done") window.dispatchEvent(new CustomEvent(TRACE_EVENT, { detail: next.result.trace.length }));
   }
 
   // The cover's question box hands its question over here.
@@ -208,7 +203,7 @@ function TraceTabs({ steps }: { steps: TraceStep[] }) {
   const step = steps[sel];
   const json = JSON.stringify(step.output ?? null, null, 2) ?? "null";
 
-  // The binder's numbered tabs link to #trace-N.
+  // Links to #trace-N open that step.
   useEffect(() => {
     const open = () => {
       const m = location.hash.match(/^#trace-(\d+)$/);

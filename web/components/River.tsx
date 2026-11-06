@@ -1,10 +1,19 @@
 "use client";
 
-// The small interactive parts around the pan: the depth gauge, the score counters
-// and the cover's question pool. Replaces the binder's tab rail.
+// The small interactive parts around the stream: the section gauge, the score counters
+// and the cover's question box.
 import { useEffect, useRef, useState } from "react";
-import { ASK_EVENT, TRACE_EVENT } from "./AskConsole.tsx";
-import { STEPS } from "@/lib/content.ts";
+import { ASK_EVENT } from "./AskConsole.tsx";
+
+const SECTIONS = [
+  { id: "cover", name: "The falls" },
+  { id: "stream", name: "The stream" },
+  { id: "specimen", name: "The answer" },
+  { id: "measured", name: "The assay" },
+  { id: "ask", name: "Ask" },
+  { id: "source", name: "Source" },
+];
+const IDS = SECTIONS.map((s) => s.id);
 
 // Marks whichever section crosses the middle band of the viewport.
 function useActive(ids: string[]) {
@@ -20,52 +29,23 @@ function useActive(ids: string[]) {
   return active;
 }
 
-const TICKS: { id: string; name: string; major: boolean; step?: number }[] = [
-  { id: "cover", name: "Cover", major: true },
-  ...STEPS.map((s, i) => ({ id: `step-${i + 1}`, name: `${i + 1} ${s.short}`, step: i + 1, major: false })),
-  { id: "specimen", name: "Specimen", major: true },
-  { id: "measured", name: "Assay", major: true },
-  { id: "ask", name: "Ask", major: true },
-  { id: "source", name: "Source", major: true },
-];
-const TICK_IDS = TICKS.map((t) => t.id);
-const STONES = TICKS.filter((t) => t.major || t.step === 1).map((t) => (t.step ? { id: "pan", name: "The pan", major: true } : t));
-const STONE_IDS = STONES.map((t) => t.id);
-
-// A river's measuring staff down the right edge; on narrow screens, a row of small stones.
+// A measuring staff down the right edge; on narrow screens, a row of small stones under the bar.
 export function DepthGauge() {
-  const active = useActive(TICK_IDS);
-  const strip = useActive(STONE_IDS);
-  // After a live answer, the step ticks open that step of its trace instead of the pan.
-  const [traced, setTraced] = useState(0);
-  useEffect(() => {
-    const on = (e: Event) => setTraced((e as CustomEvent<number>).detail);
-    window.addEventListener(TRACE_EVENT, on);
-    return () => window.removeEventListener(TRACE_EVENT, on);
-  }, []);
+  const active = useActive(IDS);
   return (
     <>
       <nav className="gauge" aria-label="Sections">
         <ol>
-          {TICKS.map((t) => {
-            const live = !!t.step && t.step <= traced;
-            return (
-              <li key={t.id} className={t.major ? "major" : undefined}>
-                <a
-                  href={live ? `#trace-${t.step}` : `#${t.id}`} className={live ? "traced" : undefined}
-                  aria-current={t.id === active ? "true" : undefined}
-                  aria-label={live ? `Step ${t.step} of your answer's trace` : t.name}
-                >
-                  <span className="name">{t.name}</span>
-                </a>
-              </li>
-            );
-          })}
+          {SECTIONS.map((s) => (
+            <li key={s.id}>
+              <a href={`#${s.id}`} aria-current={s.id === active ? "true" : undefined}><span className="name">{s.name}</span></a>
+            </li>
+          ))}
         </ol>
       </nav>
       <nav className="stones" aria-label="Sections">
-        {STONES.map((t) => (
-          <a key={t.id} href={`#${t.id}`} aria-current={t.id === strip ? "true" : undefined}>{t.name}</a>
+        {SECTIONS.map((s) => (
+          <a key={s.id} href={`#${s.id}`} aria-current={s.id === active ? "true" : undefined}>{s.name}</a>
         ))}
       </nav>
     </>

@@ -1,24 +1,26 @@
-/* SiftBase, Gold Pan. Tokens and surfaces follow DESIGN.md section 3: nothing is a plain box;
-   every container is water, a river stone, a wet slip or gold. */
+/* SiftBase, Stream. A rainforest stream of ten pools below a waterfall. The story runs on three living
+   photographs; below it the page sits on deep moss: wet slate stones, wet field slips for source text,
+   gold nuggets for actions and citations, kingfisher blue for links, waterlines instead of dividers. */
 
 :root {
-  --shallow: #123236;
-  --deep: #0f2a2e;
-  --pool: #0b2225;
-  --stone: #1e4a4c;
-  --gravel: #5e6f6b;
-  --bone: #f2efe6;
-  --bone-2: #b9c6c1;
-  --slip: #e9e4d6;
-  --ink: #16211f;
-  --ink-2: #3b4a47;
-  --slip-link: #2c5e5b;
+  --shallow: #12261a;
+  --deep: #0b1a12;
+  --ink-deep: #06100a;
+  --pool: #07120c;
+  --stone: #1c3326;
+  --gravel: #5e6b60;
+  --mist: #f2efe6;
+  --mist-2: #b9c4b4;
+  --slip: #ece7d8;
+  --ink: #141c16;
+  --ink-2: #3d4a40;
+  --slip-link: #2d5c43;
   --gold: #e8b23a;
   --gold-hi: #f6d27a;
   --gold-lo: #b9861f;
   --gold-tint: #f6e2a8;
-  --quartz: #9fc7c4;
-  --pyrite: #a39a6b;
+  --kingfisher: #5db8e3;
+  --silt: #a8916f;
   --ember: #f07a63;
 
   --sans: var(--font-grotesque), system-ui, sans-serif;
@@ -27,9 +29,11 @@
   --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
   --ease: cubic-bezier(0.2, 0, 0, 1);
   --sheen: linear-gradient(160deg, var(--gold-hi), var(--gold) 46%, var(--gold-lo));
-  --stone-fill: linear-gradient(rgb(30 74 76 / 0.94), rgb(30 74 76 / 0.94)), url(/assets/riverbed-color.webp) center / 300px;
-  --drop: 0 18px 40px -18px rgb(3 14 16 / 0.7);
-  --wet: inset 0 1px 0 rgb(242 239 230 / 0.1), inset 0 -16px 26px -16px rgb(5 18 20 / 0.55);
+  /* Wet slate: a solid wash where text sits, thinning toward the rim so the stone's grain shows at the edges. */
+  --stone-fill: radial-gradient(130% 120% at 50% 40%, rgb(28 51 38 / 0.95) 44%, rgb(28 51 38 / 0.48) 100%), url(/assets/riverbed-color.webp) center / 300px;
+  --drop: 0 18px 40px -18px rgb(2 8 4 / 0.75);
+  /* Wet slate: a bright film along the top lip, a faint sheen inside it, the shadowed underside below. */
+  --wet: inset 0 2px 0 rgb(242 239 230 / 0.24), inset 0 0 0 1px rgb(242 239 230 / 0.06), inset 0 18px 30px -18px rgb(242 239 230 / 0.12), inset 0 -18px 28px -16px rgb(2 10 5 / 0.65);
   color-scheme: dark;
 }
 
@@ -42,8 +46,8 @@ html.lenis, html.lenis body { height: auto; }
 body {
   margin: 0;
   min-height: 100svh;
-  background: linear-gradient(180deg, var(--shallow) 0, var(--deep) 22%, var(--deep) 70%, var(--pool) 100%);
-  color: var(--bone);
+  background: linear-gradient(180deg, var(--shallow) 0, var(--deep) 18%, var(--deep) 72%, var(--ink-deep) 100%);
+  color: var(--mist);
   font: 400 1rem/1.6 var(--sans);
   font-optical-sizing: auto;
   caret-color: var(--gold);
@@ -54,20 +58,21 @@ body {
 ::-webkit-scrollbar-track { background: var(--deep); }
 ::-webkit-scrollbar-thumb { background: var(--stone); border-radius: 8px 6px 9px 7px; border: 2px solid var(--deep); }
 :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-a { color: var(--quartz); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
+a { color: var(--kingfisher); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
 a:hover { text-decoration-thickness: 2px; }
 h1, h2, h3, h4 { margin: 0; line-height: 1.05; letter-spacing: -0.02em; text-wrap: balance; }
 p { margin: 0; text-wrap: pretty; }
 button { font: inherit; cursor: pointer; }
 code { font-family: var(--mono); font-size: 0.85em; }
+img { max-width: 100%; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .skip { position: absolute; left: 16px; top: -60px; z-index: 50; padding: 10px 16px; background: var(--sheen); color: var(--ink); border-radius: 18px 22px 16px 24px; }
 .skip:focus { top: 12px; }
 .wrap { width: min(1200px, 100% - 48px); margin-inline: auto; }
-.h2 { font-size: clamp(2rem, 4.2vw, 2.75rem); font-weight: 750; font-stretch: 92%; }
-.lede { font-size: clamp(1.0625rem, 1.6vw, 1.3125rem); color: var(--bone-2); max-width: 62ch; }
-.muted { color: var(--bone-2); }
-.label { font: 700 0.8125rem/1.2 var(--figures); letter-spacing: 0.08em; text-transform: uppercase; color: var(--bone-2); }
+.h2 { font-size: clamp(2rem, 4.2vw, 2.75rem); font-weight: 750; font-stretch: 90%; }
+.lede { font-size: clamp(1.0625rem, 1.6vw, 1.3125rem); color: var(--mist-2); max-width: 62ch; }
+.muted { color: var(--mist-2); }
+.label { font: 700 0.8125rem/1.2 var(--figures); letter-spacing: 0.08em; text-transform: uppercase; color: var(--mist-2); }
 
 /* ---------- Surfaces ---------- */
 
@@ -86,7 +91,7 @@ code { font-family: var(--mono); font-size: 0.85em; }
   background: var(--slip);
   color: var(--ink);
   border-radius: 7px 4px 8px 5px / 5px 8px 4px 7px;
-  box-shadow: 0 14px 30px -16px rgb(3 14 16 / 0.75), inset 0 -2px 0 rgb(22 33 31 / 0.06);
+  box-shadow: 0 14px 30px -16px rgb(2 8 4 / 0.8), inset 0 -2px 0 rgb(20 28 22 / 0.06);
   rotate: -1deg;
 }
 /* Caustic light sliding over the wet paper. */
@@ -118,7 +123,7 @@ code { font-family: var(--mono); font-size: 0.85em; }
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45), 0 12px 24px -12px rgb(3 14 16 / 0.8);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45), 0 12px 24px -12px rgb(2 8 4 / 0.85);
   transition: translate 160ms var(--ease), filter 160ms var(--ease);
 }
 .nugget::after {
@@ -134,31 +139,32 @@ code { font-family: var(--mono); font-size: 0.85em; }
 .nugget[aria-disabled="true"] { filter: saturate(0.4) brightness(0.8); cursor: progress; }
 .nugget--sm { padding: 0.5rem 1rem; font-size: 0.9375rem; gap: 0.28em; }
 
+/* Secondary action: a dark pool with a kingfisher-blue rim. */
 .quartz {
   display: inline-flex; align-items: center;
   padding: 0.65rem 1.2rem;
   border: 0;
   border-radius: 22px 28px 20px 30px / 20px 26px 22px 28px;
   background: var(--pool);
-  color: var(--quartz);
-  box-shadow: inset 0 0 0 1px rgb(159 199 196 / 0.5), inset 0 2px 6px rgb(0 0 0 / 0.35);
+  color: var(--kingfisher);
+  box-shadow: inset 0 0 0 1px rgb(93 184 227 / 0.5), inset 0 2px 6px rgb(0 0 0 / 0.35);
   text-decoration: underline;
   text-underline-offset: 0.2em;
   transition: box-shadow 160ms var(--ease);
 }
-.quartz:hover { box-shadow: inset 0 0 0 1px var(--quartz), inset 0 2px 6px rgb(0 0 0 / 0.35); }
+.quartz:hover { box-shadow: inset 0 0 0 1px var(--kingfisher), inset 0 2px 6px rgb(0 0 0 / 0.35); }
 
 .pool {
   width: 100%;
   border: 0;
   border-radius: 18px 24px 16px 26px / 16px 22px 18px 24px;
-  background: var(--pool);
-  color: var(--bone);
+  background: rgb(7 18 12 / 0.86);
+  color: var(--mist);
   font: inherit;
   padding: 0.85rem 1.1rem;
   box-shadow: inset 0 3px 8px rgb(0 0 0 / 0.5), inset 0 -1px 0 rgb(242 239 230 / 0.06);
 }
-.pool::placeholder { color: var(--bone-2); opacity: 0.85; }
+.pool::placeholder { color: var(--mist-2); opacity: 0.9; }
 .pool:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 /* Waterlines replace every divider: one slow sine drifting sideways. */
@@ -167,40 +173,40 @@ code { font-family: var(--mono); font-size: 0.85em; }
 .waterline path { fill: none; stroke: rgb(242 239 230 / 0.12); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
 @keyframes flow { to { transform: translateX(-50%); } }
 
-/* ---------- Top bar and depth gauge ---------- */
+/* ---------- Top bar and section gauge ---------- */
 
 .bar {
   position: fixed; inset: 0 0 auto; z-index: 30;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px clamp(16px, 3vw, 32px);
-  padding-bottom: 34px;
-  background: linear-gradient(180deg, rgb(11 34 37 / 0.96) 0 62%, rgb(11 34 37 / 0));
+  padding: 14px clamp(16px, 3vw, 32px) 34px;
+  /* Solid where the bar's text sits, so scrolled copy never shows through behind the wordmark. */
+  background: linear-gradient(180deg, var(--ink-deep) 0 62%, rgb(6 16 10 / 0));
 }
 .bar nav { display: flex; align-items: center; gap: 20px; }
-.wordmark { display: inline-flex; align-items: center; gap: 8px; color: var(--bone); font-weight: 800; font-size: 1.125rem; text-decoration: none; letter-spacing: -0.01em; }
-.wordmark svg { width: 22px; height: 22px; fill: none; stroke: var(--bone); stroke-width: 1.4; }
+.wordmark { display: inline-flex; align-items: center; gap: 8px; color: var(--mist); font-weight: 800; font-size: 1.125rem; text-decoration: none; letter-spacing: -0.01em; }
+.wordmark svg { width: 22px; height: 22px; fill: none; stroke: var(--mist); stroke-width: 1.5; stroke-linecap: round; }
 .wordmark circle { fill: var(--gold); stroke: none; }
-.quartz-link { color: var(--quartz); }
-@media (max-width: 519px) { .bar .quartz-link, .bar .wide { display: none; } }
+.bar .link { color: var(--mist); }
+@media (max-width: 519px) { .bar .link, .bar .wide { display: none; } }
 
-.gauge { position: fixed; right: 14px; top: 50%; translate: 0 -50%; z-index: 25; display: none; }
-.gauge ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
-.gauge a { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-height: 22px; text-decoration: none; color: var(--bone-2); }
-.gauge a::after { content: ""; width: 10px; height: 2px; border-radius: 2px; background: rgb(242 239 230 / 0.4); transition: width 160ms var(--ease), background 160ms var(--ease); }
-.gauge .major a::after { width: 18px; }
-.gauge .name { font: 700 0.75rem/1 var(--figures); letter-spacing: 0.08em; text-transform: uppercase; opacity: 0; translate: 6px 0; transition: opacity 160ms var(--ease), translate 160ms var(--ease); }
-.gauge a:hover::after, .gauge a:focus-visible::after { width: 24px; }
+.gauge { position: fixed; right: 16px; top: 50%; translate: 0 -50%; z-index: 25; display: none; }
+.gauge ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.gauge a { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-height: 24px; text-decoration: none; color: var(--mist-2); }
+.gauge a::after { content: ""; width: 14px; height: 9px; border-radius: 50% 60% 45% 55%; background: rgb(242 239 230 / 0.35); transition: width 160ms var(--ease), background 160ms var(--ease); }
+.gauge .name { font: 700 0.75rem/1 var(--figures); letter-spacing: 0.08em; text-transform: uppercase; opacity: 0; translate: 6px 0; transition: opacity 160ms var(--ease), translate 160ms var(--ease); text-shadow: 0 1px 8px rgb(0 0 0 / 0.7); }
+.gauge a:hover::after, .gauge a:focus-visible::after { width: 20px; }
 .gauge a:hover .name, .gauge a:focus-visible .name, .gauge a[aria-current] .name { opacity: 1; translate: 0 0; }
-.gauge a[aria-current]::after { width: 28px; background: var(--gold); }
-.gauge a[aria-current] { color: var(--bone); }
-.gauge a.traced::after { background: var(--quartz); }
+.gauge a[aria-current]::after { width: 24px; background: var(--gold); }
+.gauge a[aria-current] { color: var(--mist); }
 
 .stones {
   position: fixed; inset: 58px 0 auto; z-index: 25;
-  display: flex; gap: 8px; overflow-x: auto; padding: 4px 16px 8px; scrollbar-width: none;
+  display: flex; gap: 8px; overflow-x: auto; padding: 4px 16px 18px; scrollbar-width: none;
+  /* The section chips carry their own solid backing, so scrolled copy never reads behind them. */
+  background: linear-gradient(180deg, var(--ink-deep) 0 70%, rgb(6 16 10 / 0));
 }
 .stones a {
-  flex: none; padding: 5px 12px; font-size: 0.8125rem; text-decoration: none; color: var(--bone-2);
+  flex: none; padding: 5px 12px; font-size: 0.8125rem; text-decoration: none; color: var(--mist-2);
   background: var(--stone-fill); border-radius: 14px 18px 12px 20px / 12px 16px 14px 18px; box-shadow: var(--wet);
 }
 .stones a[aria-current] { color: var(--ink); background: var(--sheen); }
@@ -209,43 +215,34 @@ code { font-family: var(--mono); font-size: 0.85em; }
   .stones { display: none; }
 }
 
-/* ---------- Cover ---------- */
+/* ---------- Cover: the falls ---------- */
 
 main, .riverbed { position: relative; z-index: 1; }
-/* Anchor jumps land below the fixed top bar (and the phone section stones). */
 section[id], footer[id] { scroll-margin-top: 88px; }
 @media (max-width: 1023px) { section[id], footer[id] { scroll-margin-top: 112px; } }
-.cover { position: relative; overflow-x: clip; min-height: 100svh; display: grid; align-items: center; padding: 120px clamp(16px, 6vw, 96px) 72px; }
-.copy { position: relative; max-width: 560px; }
-.still { isolation: isolate; }
-.still::before {
-  content: ""; position: absolute; inset: -26% -20%; z-index: -1;
-  background: radial-gradient(closest-side, rgb(11 34 37 / 0.88), rgb(11 34 37 / 0.62) 55%, rgb(11 34 37 / 0));
-  pointer-events: none;
+.cover { position: relative; min-height: 100svh; display: grid; align-items: center; padding: 120px clamp(16px, 6vw, 96px) 96px; overflow-x: clip; }
+/* The still photo of the falls, painted with the page; the living stream fades in over it. */
+.cover-photo { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 45% 50%; transition: opacity 900ms var(--ease); }
+:root:has(.scene.is-ready) .cover-photo { opacity: 0; }
+:root:not(.has-scene) .cover::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(90deg, rgb(6 16 10 / 0.78), rgb(6 16 10 / 0.35) 45%, transparent 70%), linear-gradient(180deg, rgb(6 16 10 / 0.5), transparent 25%, transparent 70%, var(--deep));
 }
-.cover h1 { font-size: clamp(2.75rem, 6.2vw, 4.75rem); font-weight: 800; font-stretch: 88%; line-height: 1; margin-bottom: 24px; }
+.copy { position: relative; max-width: 600px; }
+/* Capped so the first line ends on the moss slope, left of the falls (the falls sit at ~45% of the width). */
+.cover h1 { font-size: clamp(2.75rem, 5vw, 4.5rem); font-weight: 800; font-stretch: 86%; line-height: 0.95; letter-spacing: -0.022em; margin-bottom: 24px; }
 .cover h1 .line { display: block; overflow: hidden; padding-bottom: 0.06em; }
 .cover h1 .line > span { display: inline-block; animation: rise 900ms var(--ease) both; }
 .cover h1 .line + .line > span { animation-delay: 120ms; }
 .cover h1 em { font-style: normal; color: var(--gold); }
 @keyframes rise { from { transform: translateY(105%); } }
-.cover .lede { margin-bottom: 32px; max-width: 36ch; }
-
-/* Static poster of the pan, painted with the page; the WebGL pan fades in over it. */
-.poster {
-  position: absolute; right: -6vw; top: 52%; translate: 0 -50%;
-  width: min(66vw, 980px); aspect-ratio: 1 / 0.62; border-radius: 50%;
-  background:
-    radial-gradient(closest-side, rgb(15 42 46 / 0.55) 82%, rgb(15 42 46 / 0) 84%),
-    linear-gradient(rgb(46 88 86 / 0.55), rgb(46 88 86 / 0.55)),
-    url(/assets/riverbed-color.webp) center / 22%;
-  box-shadow: inset 0 0 0 clamp(8px, 1.2vw, 16px) #6b7673, inset 0 0 0 clamp(11px, 1.6vw, 21px) #3c4644, 0 40px 80px -30px rgb(0 0 0 / 0.7);
-  transition: opacity 800ms var(--ease);
+.cover .lede { margin-bottom: 30px; max-width: 40ch; color: var(--mist); opacity: 0.9; text-shadow: 0 1px 14px rgb(0 0 0 / 0.55); }
+.scroll-cue {
+  position: absolute; left: clamp(16px, 6vw, 96px); bottom: 32px;
+  display: flex; align-items: center; gap: 12px; font-size: 0.875rem; color: var(--mist-2);
 }
-:root:has(.scene.is-ready) .poster { opacity: 0; }
-@media (max-width: 1023px) {
-  .poster { right: 50%; translate: 50% -50%; width: 150vw; opacity: 0.45; }
-}
+.scroll-cue::before { content: ""; width: 2px; height: 34px; border-radius: 2px; background: linear-gradient(var(--gold), transparent); animation: fall 1.8s var(--ease) infinite; transform-origin: top; }
+@keyframes fall { 0% { scale: 1 0; } 50% { scale: 1 1; } 100% { scale: 1 1; opacity: 0; } }
 
 .ask-form .row { position: relative; display: flex; gap: 10px; align-items: stretch; }
 .ask-form .row::after {
@@ -256,77 +253,89 @@ section[id], footer[id] { scroll-margin-top: 88px; }
 @keyframes ripple { 0% { opacity: 0.8; scale: 0.97; } 100% { opacity: 0; scale: 1.06; } }
 .ask-form textarea.pool { min-height: 96px; resize: vertical; }
 .ask-form .row:has(textarea) { align-items: flex-start; }
-.hint { margin-top: 10px; font-size: 0.875rem; color: var(--bone-2); }
-.hint--warn { color: var(--gold-hi); }
+.hint { margin-top: 10px; font-size: 0.875rem; color: var(--mist-2); }
+.cover .hint { color: var(--mist); opacity: 0.8; text-shadow: 0 1px 10px rgb(0 0 0 / 0.6); }
+.hint--warn, .cover .hint--warn { color: var(--gold-hi); opacity: 1; }
 .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
 .examples button {
-  border: 0; padding: 0.45rem 0.9rem; font-size: 0.875rem; text-align: left; color: var(--bone);
+  border: 0; padding: 0.45rem 0.9rem; font-size: 0.875rem; text-align: left; color: var(--mist);
   background: var(--pool); border-radius: 16px 20px 14px 22px / 14px 18px 16px 20px;
   box-shadow: inset 0 2px 5px rgb(0 0 0 / 0.4);
   transition: color 160ms var(--ease), box-shadow 160ms var(--ease);
 }
 .examples button:hover { color: var(--gold-hi); box-shadow: inset 0 2px 5px rgb(0 0 0 / 0.4), inset 0 0 0 1px rgb(232 178 58 / 0.45); }
 
-/* ---------- The pan ---------- */
+/* ---------- The stream ---------- */
 
 .scene { position: fixed; inset: 0; z-index: -1; pointer-events: none; opacity: 0; transition: opacity 900ms var(--ease); }
 .scene.is-ready { opacity: 1; }
-.scene-dim { position: absolute; inset: 0; }
-.scene canvas { display: block; }
-.assay-tag {
-  position: fixed; left: 0; top: 0; z-index: 40; pointer-events: none;
-  padding: 6px 12px; font-size: 0.8125rem; color: var(--bone-2);
-  background: var(--stone-fill); border-radius: 14px 18px 12px 20px; box-shadow: var(--wet), var(--drop);
+.stream-canvas { display: block; width: 100%; height: 100%; }
+/* Shade for the captions: the moss slope side and the bottom edge, never the middle of the frame. */
+.shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgb(6 16 10 / 0.72), rgb(6 16 10 / 0.3) 40%, transparent 62%), linear-gradient(180deg, rgb(6 16 10 / 0.45), transparent 20%, transparent 64%, rgb(6 16 10 / 0.72)); }
+/* On phones the text spans the full width, so the shade does too: dark where text sits, lighter between. */
+@media (max-width: 767px) {
+  .shade, :root:not(.has-scene) .cover::after { background: linear-gradient(180deg, rgb(6 16 10 / 0.62), rgb(6 16 10 / 0.5) 45%, rgb(6 16 10 / 0.3) 62%, rgb(6 16 10 / 0.78)); }
 }
-.assay-tag b { color: var(--bone); font-weight: 650; }
 
-.pan { position: relative; }
-.track { position: relative; padding: 112px 0; }
-.pan-h { width: min(1200px, 100% - 48px); margin: 0 auto 32px; }
-.beats { list-style: none; margin: 0 auto; padding: 0; width: min(1200px, 100% - 48px); display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+.stream { position: relative; }
+.track { position: relative; padding: 112px 0 48px; }
+.stream-h { width: min(1200px, 100% - 48px); margin: 0 auto 40px; }
+/* Without the scene: each reach is a photograph with its beats laid over the moss below it. */
+.reach { width: min(1200px, 100% - 48px); margin: 0 auto 72px; }
+.reach-photo { margin: 0 0 20px; }
+.reach-photo img { display: block; width: 100%; height: auto; aspect-ratio: 1376 / 768; object-fit: cover; border-radius: 34px 26px 38px 30px / 28px 36px 30px 40px; box-shadow: var(--drop); }
+.beats { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
 .beat { padding: 24px 26px; }
 .beat:nth-child(3n + 2) { border-radius: 26px 40px 30px 36px / 36px 28px 40px 30px; }
 .beat:nth-child(3n) { border-radius: 40px 32px 26px 38px / 30px 40px 34px 28px; }
 .beat-n { font: 800 2.5rem/1 var(--figures); color: var(--gold); }
-.beat h3 { margin: 10px 0 8px; font-size: 1.375rem; }
-.beat h3 code { display: block; margin-top: 4px; font-size: 0.8125rem; font-weight: 400; color: var(--quartz); letter-spacing: 0; }
-.beat p { color: var(--bone-2); }
-.beat .beat-count { margin-top: 14px; color: var(--bone); }
+.beat h3 { margin: 10px 0 4px; font-size: 1.375rem; }
+.beat code { display: block; margin-bottom: 8px; font-size: 0.8125rem; color: var(--mist-2); }
+.beat p { color: var(--mist-2); }
+.beat .beat-count { margin-top: 14px; color: var(--mist); }
 .beat-count b { font: 800 1.75rem/1 var(--figures); color: var(--gold-hi); margin-right: 6px; }
 .pin { display: none; }
 
-/* Scene mode: the track is scrubbed; beats become hidden anchors at their scroll positions. */
-.has-scene .track { height: 1000svh; padding: 0; }
-.has-scene .pan-h { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-.has-scene .beats { display: block; width: auto; }
+/* Scene mode: the track is scrubbed; the beats become hidden anchors at their scroll positions. */
+.has-scene .track { height: 1100svh; padding: 0; }
+.has-scene .stream-h { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.has-scene .reach { display: contents; }
+.has-scene .reach-photo { display: none; }
+.has-scene .beats { display: contents; }
 .has-scene .beat {
   position: absolute; left: 0; width: 1px; overflow: hidden; opacity: 0; pointer-events: none; padding: 0;
   background: none; box-shadow: none;
-  /* + 50svh: the gauge marks what crosses the middle of the screen, as ScrollTrigger's progress does. */
   top: calc(var(--from) * (100% - 100svh) + 50svh);
   height: calc((var(--to) - var(--from)) * (100% - 100svh));
 }
 .has-scene .pin { display: block; position: sticky; top: 0; height: 100svh; }
-.caption { position: absolute; left: clamp(20px, 6vw, 96px); top: 24svh; max-width: min(430px, 100% - 40px); }
-.caption .beat-n { font-size: clamp(3rem, 6vw, 5rem); display: block; }
-.beat-title { display: block; margin-top: 8px; font-size: clamp(1.5rem, 2.6vw, 1.75rem); font-weight: 750; letter-spacing: -0.01em; min-height: 1.2em; }
-.caption code { display: block; margin-top: 6px; color: var(--quartz); font-size: 0.875rem; }
-.beat-line { margin-top: 14px; color: var(--bone-2); font-size: 1.0625rem; animation: settle 420ms var(--ease) both; }
-@keyframes settle { from { opacity: 0; transform: translateY(12px); filter: blur(4px); } }
-.odo { position: absolute; left: clamp(20px, 6vw, 96px); bottom: 9svh; }
-.odometer { display: inline-flex; font: 800 clamp(4rem, 9vw, 8.5rem)/1 var(--figures); color: var(--bone); letter-spacing: -0.01em; }
+.caption { position: absolute; left: clamp(20px, 6vw, 96px); top: 22svh; max-width: min(560px, 100% - 40px); text-shadow: 0 2px 18px rgb(0 0 0 / 0.5); }
+.beat-title { display: block; font-size: clamp(2.25rem, 4.6vw, 4.25rem); font-weight: 780; font-stretch: 84%; line-height: 0.98; letter-spacing: -0.03em; min-height: 1em; }
+.caption code { display: block; margin-top: 12px; color: var(--mist-2); font-size: 0.875rem; text-shadow: none; }
+.beat-line { margin-top: 16px; max-width: 44ch; color: var(--mist); opacity: 0.92; font-size: clamp(1.0625rem, 1.4vw, 1.25rem); animation: settle 520ms var(--ease) both; }
+@keyframes settle { from { opacity: 0; transform: translateY(12px); filter: blur(6px); } }
+.odo { position: absolute; left: clamp(20px, 6vw, 96px); bottom: 8svh; }
+.odometer { display: inline-flex; font: 800 clamp(4rem, 9vw, 8.5rem)/1 var(--figures); color: var(--mist); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 .digit { position: relative; display: inline-block; height: 1em; overflow: hidden; }
 .digit > .sizer { visibility: hidden; }
 .digit > .strip { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: flex-start; transition: transform 900ms var(--ease); }
 .digit .strip > span { height: 1em; }
 .odo-label { display: block; margin-top: 4px; font: 700 0.9375rem/1.2 var(--figures); letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold-hi); }
+/* Ten pebbles, one per pool: the ones passed stay pale, the current one turns gold. */
+.rail { display: flex; gap: 8px; margin-top: 18px; }
+.rail i { width: 28px; height: 11px; border-radius: 50% 60% 45% 55% / 55% 45% 60% 50%; background: rgb(242 239 230 / 0.26); transition: background 300ms var(--ease), width 300ms var(--ease); }
+.rail i.past { background: rgb(242 239 230 / 0.7); }
+.rail i.here { background: var(--gold); width: 40px; }
 @media (max-width: 1023px) {
-  .has-scene .track { height: 800svh; }
   .caption { top: 15svh; }
-  .odo { bottom: 6svh; }
+  .odo { bottom: 5svh; }
+  .odometer { font-size: clamp(3.25rem, 14vw, 5rem); }
+  .rail { gap: 6px; }
+  .rail i { width: 20px; }
+  .rail i.here { width: 30px; }
 }
 
-/* ---------- Sections on the water ---------- */
+/* ---------- Sections on the moss ---------- */
 
 .section { padding: 112px 0 48px; }
 .head { margin-bottom: 48px; display: grid; gap: 16px; }
@@ -336,7 +345,7 @@ section[id], footer[id] { scroll-margin-top: 88px; }
 .answer { padding: clamp(24px, 3vw, 40px); }
 .answer .q { font-size: 1.75rem; margin-bottom: 20px; }
 .answer .body { display: grid; gap: 12px; max-width: 72ch; }
-.answer .section { margin-top: 18px; font-size: 1.125rem; color: var(--bone); padding: 0; }
+.answer .section { margin-top: 18px; font-size: 1.125rem; color: var(--mist); padding: 0; }
 .answer ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 10px; }
 .answer li::marker { color: var(--gold); }
 .claim { background: linear-gradient(var(--gold), var(--gold)) 0 100% / 100% 1px no-repeat; padding-bottom: 1px; }
@@ -353,15 +362,15 @@ section[id], footer[id] { scroll-margin-top: 88px; }
 }
 .flake:hover { scale: 1.08; }
 .flake[aria-pressed="true"] { scale: 1.1; box-shadow: 0 0 0 2px var(--pool), 0 0 0 3.5px var(--gold-hi); }
-.flake--bare { background: none; color: var(--bone-2); box-shadow: inset 0 0 0 1px var(--gravel); }
-.withdrawn { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: var(--bone-2); }
-.pyrite { padding: 0.1rem 0.5rem; border-radius: 6px 4px 7px 5px; background: var(--pyrite); color: var(--ink); font: 700 0.75rem/1.4 var(--figures); letter-spacing: 0.1em; text-transform: uppercase; }
+.flake--bare { background: none; color: var(--mist-2); box-shadow: inset 0 0 0 1px var(--gravel); }
+.withdrawn { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: var(--mist-2); }
+.pyrite { padding: 0.1rem 0.5rem; border-radius: 6px 4px 7px 5px; background: var(--silt); color: var(--ink); font: 700 0.75rem/1.4 var(--figures); letter-spacing: 0.1em; text-transform: uppercase; }
 
 .sources { display: grid; gap: 14px; }
 @media (min-width: 1024px) { .sources { position: sticky; top: 96px; } }
 .source-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .source-list button {
-  min-width: 36px; height: 32px; border: 0; color: var(--bone-2); font: 700 0.875rem/1 var(--figures);
+  min-width: 36px; height: 32px; border: 0; color: var(--mist-2); font: 700 0.875rem/1 var(--figures);
   background: var(--stone-fill); border-radius: 14px 11px 15px 12px / 12px 15px 11px 14px; box-shadow: var(--wet);
   transition: translate 160ms var(--ease);
 }
@@ -374,13 +383,13 @@ section[id], footer[id] { scroll-margin-top: 88px; }
 .source-slip .where span { color: var(--ink-2); font: 700 0.8125rem/1.4 var(--figures); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
 .source-slip blockquote { margin: 0 0 12px; padding: 4px 8px; font: 400 1rem/1.6 var(--serif); background: var(--gold-tint); border-radius: 4px 6px 3px 5px; }
 .empty { color: var(--ink-2); }
-.run-meta { margin-top: 24px; color: var(--bone-2); font-size: 0.9375rem; max-width: 75ch; }
+.run-meta { margin-top: 24px; color: var(--mist-2); font-size: 0.9375rem; max-width: 75ch; }
 .limits-note { margin-top: 20px; display: grid; gap: 8px; }
-.limits { margin: 0; padding-left: 1.1rem; color: var(--bone-2); font-size: 0.9375rem; display: grid; gap: 4px; max-width: 75ch; }
+.limits { margin: 0; padding-left: 1.1rem; color: var(--mist-2); font-size: 0.9375rem; display: grid; gap: 4px; max-width: 75ch; }
 
-/* The assay: three wet slips fanned on one wide stone. */
-.assay { position: relative; display: grid; gap: 20px; padding: clamp(24px, 4vw, 48px); grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
-.assay-slip { padding: 22px 24px 26px; rotate: var(--fan, 0deg); transition: rotate 420ms var(--ease); }
+/* The assay: wet slips fanned on one wide stone. */
+.assay { position: relative; display: grid; gap: 20px; padding: clamp(24px, 4vw, 48px); grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); border-radius: 40px 32px 26px 38px / 30px 40px 34px 28px; }
+.assay-slip { padding: 20px 18px 24px; rotate: var(--fan, 0deg); transition: rotate 420ms var(--ease); }
 @supports (animation-timeline: view()) {
   .assay-slip { animation: straighten linear both; animation-timeline: view(); animation-range: entry 0% cover 35%; }
   @keyframes straighten { from { rotate: var(--fan, 0deg); } to { rotate: calc(var(--fan, 0deg) / 6); } }
@@ -388,12 +397,13 @@ section[id], footer[id] { scroll-margin-top: 88px; }
 .slip-name { display: block; font: 800 1.375rem/1.1 var(--figures); letter-spacing: 0.03em; text-transform: uppercase; }
 .slip-when { display: block; margin-top: 4px; color: var(--ink-2); font-size: 0.8125rem; }
 .purity { margin: 18px 0 14px; }
-.purity .big { display: block; font: 800 clamp(3.5rem, 6vw, 5rem)/0.95 var(--figures); color: var(--ink); }
+.purity .big { display: block; font: 800 clamp(3.25rem, 5vw, 4.5rem)/0.95 var(--figures); color: var(--ink); font-variant-numeric: tabular-nums; }
 .purity .big small { font-size: 0.45em; margin-left: 2px; }
 .purity .label { color: var(--ink-2); }
-.assay-slip dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
-.assay-slip dt { color: var(--ink-2); }
-.assay-slip dd { margin: 0; text-align: right; font-weight: 600; white-space: nowrap; }
+/* Label over value: five slips to a row leave no room for both on one line. */
+.assay-slip dl { margin: 0; display: grid; gap: 0; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+.assay-slip dt { color: var(--ink-2); margin-top: 6px; }
+.assay-slip dd { margin: 0; font-weight: 650; }
 .assay-stamp {
   display: inline-block; margin-top: 10px; padding: 4px 10px; rotate: -3deg;
   font: 800 0.875rem/1.2 var(--figures); letter-spacing: 0.1em; text-transform: uppercase;
@@ -407,31 +417,31 @@ section[id], footer[id] { scroll-margin-top: 88px; }
 .variance { margin-top: 40px; display: grid; gap: 12px; max-width: 70ch; }
 
 /* The console: one large stone with the question pool cut into it. */
-.console { padding: clamp(20px, 3.5vw, 44px); }
+.console { padding: clamp(20px, 3.5vw, 44px); border-radius: 26px 40px 30px 36px / 36px 28px 40px 30px; }
 .waiting { margin-top: 24px; padding: 22px 24px; display: grid; gap: 14px; grid-template-columns: auto 1fr; align-items: center; background: var(--pool); border-radius: 22px 30px 20px 28px; box-shadow: inset 0 2px 8px rgb(0 0 0 / 0.4); }
 .waiting .quartz { grid-column: 1 / -1; justify-self: start; }
 .clock { font: 800 2.75rem/1 var(--figures); color: var(--gold-hi); font-variant-numeric: tabular-nums; }
-.waiting p { color: var(--bone-2); }
+.waiting p { color: var(--mist-2); }
 .notice { margin-top: 24px; padding: 22px 24px; display: grid; gap: 10px; justify-items: start; box-shadow: inset 0 0 0 1px rgb(232 178 58 / 0.4), var(--wet), var(--drop); }
-.notice p { color: var(--bone-2); }
+.notice p { color: var(--mist-2); }
 .error-pool { margin-top: 24px; padding: 22px 24px; display: grid; gap: 10px; justify-items: start; background: var(--pool); border-radius: 22px 30px 20px 28px; box-shadow: inset 0 0 0 1px rgb(240 122 99 / 0.6); }
 .error-pool b { color: var(--ember); }
-.error-pool p { color: var(--bone-2); }
+.error-pool p { color: var(--mist-2); }
 .result { margin-top: 32px; display: grid; gap: 20px; }
 .result:focus { outline: none; }
-.result .meta { display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--bone-2); font-size: 0.9375rem; }
+.result .meta { display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--mist-2); font-size: 0.9375rem; }
 .trace { display: grid; gap: 14px; margin-top: 12px; }
 .stepping { position: relative; display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 0; }
 .stepping::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: rgb(242 239 230 / 0.12); }
 .stepping button {
-  position: relative; width: 40px; height: 34px; border: 0; color: var(--bone-2); font: 700 0.9375rem/1 var(--figures);
+  position: relative; width: 40px; height: 34px; border: 0; color: var(--mist-2); font: 700 0.9375rem/1 var(--figures);
   background: var(--stone-fill); border-radius: 16px 12px 17px 13px / 13px 17px 12px 16px; box-shadow: var(--wet), 0 8px 14px -8px rgb(0 0 0 / 0.6);
   transition: translate 160ms var(--ease);
   animation: settle 260ms var(--ease) both; animation-delay: calc(var(--i) * 40ms);
 }
-.stepping button[aria-selected="true"] { translate: 0 -2px; color: var(--bone); box-shadow: inset 0 0 0 1.5px var(--gold), var(--wet); }
+.stepping button[aria-selected="true"] { translate: 0 -2px; color: var(--mist); box-shadow: inset 0 0 0 1.5px var(--gold), var(--wet); }
 #trace-panel { padding: 22px 24px; display: grid; gap: 10px; }
-#trace-panel pre { margin: 6px 0 0; max-height: 360px; overflow: auto; padding: 14px 16px; background: var(--pool); color: var(--bone-2); border-radius: 12px 16px 10px 18px; font: 0.8125rem/1.5 var(--mono); }
+#trace-panel pre { margin: 6px 0 0; max-height: 360px; overflow: auto; padding: 14px 16px; background: var(--pool); color: var(--mist-2); border-radius: 12px 16px 10px 18px; font: 0.8125rem/1.5 var(--mono); }
 
 /* Inside the console stone, the answer, its trace and notices are pools cut into it, not stones on a stone. */
 .console .stone { background: var(--pool); box-shadow: inset 0 3px 10px rgb(0 0 0 / 0.45), inset 0 -1px 0 rgb(242 239 230 / 0.05); }
@@ -441,29 +451,23 @@ section[id], footer[id] { scroll-margin-top: 88px; }
 
 .riverbed {
   margin-top: 112px; padding: 0 0 48px;
-  background: linear-gradient(rgb(11 34 37 / 0.94), rgb(11 34 37 / 0.94)), url(/assets/riverbed-color.webp) center / 300px;
+  background: linear-gradient(rgb(7 18 12 / 0.94), rgb(7 18 12 / 0.94)), url(/assets/riverbed-color.webp) center / 300px;
   border-radius: 48px 64px 0 0 / 28px 40px 0 0;
 }
 .marquee { overflow: hidden; padding: 22px 0; margin-bottom: 48px; box-shadow: inset 0 -1px 0 rgb(242 239 230 / 0.08); }
 .marquee > div { display: flex; width: max-content; animation: flow 48s linear infinite; }
-.marquee span { padding: 0 22px; font: 700 1.125rem/1 var(--figures); letter-spacing: 0.1em; text-transform: uppercase; color: var(--bone-2); white-space: nowrap; }
+.marquee span { padding: 0 22px; font: 700 1.125rem/1 var(--figures); letter-spacing: 0.1em; text-transform: uppercase; color: var(--mist-2); white-space: nowrap; }
 .marquee span::after { content: ""; display: inline-block; width: 8px; height: 6px; margin-left: 44px; vertical-align: middle; background: var(--sheen); border-radius: 3px 2px 4px 2px; }
 .riverbed .h2 { margin-bottom: 32px; }
 .cols { display: grid; gap: 32px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .cols h3 { font: 700 0.875rem/1.2 var(--figures); letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold-hi); margin-bottom: 12px; }
-.cols ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; color: var(--bone-2); }
-.credit { margin-top: 48px; color: var(--bone-2); font-size: 0.875rem; }
+.cols ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; color: var(--mist-2); }
+.credit { margin-top: 48px; color: var(--mist-2); font-size: 0.875rem; max-width: 80ch; }
 
 /* ---------- 404 ---------- */
 
-.lost { min-height: 100svh; display: grid; place-items: center; padding: 48px 16px; position: relative; }
-.empty-pan {
-  position: absolute; width: min(80vw, 640px); aspect-ratio: 1 / 0.6; border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(11 34 37 / 0.6) 80%, transparent 82%), linear-gradient(rgb(46 88 86 / 0.5), rgb(46 88 86 / 0.5)), url(/assets/riverbed-color.webp) center / 24%;
-  box-shadow: inset 0 0 0 12px #6b7673, inset 0 0 0 16px #3c4644;
-}
-.pyrite-flake { position: absolute; left: 40%; top: 46%; width: 18px; height: 10px; background: var(--pyrite); border-radius: 7px 4px 8px 5px; animation: wander 9s ease-in-out infinite alternate; }
-@keyframes wander { to { transform: translate(90px, -30px) rotate(160deg); } }
+.lost { min-height: 100svh; display: grid; place-items: center; padding: 48px 16px; position: relative; isolation: isolate; }
+.lost-photo { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.55) saturate(0.9); }
 .lost-note { position: relative; max-width: 520px; padding: 36px; display: grid; gap: 16px; justify-items: start; }
 
 /* ---------- Reduced motion: every surface at rest ---------- */

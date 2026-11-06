@@ -1,6 +1,6 @@
 import AskConsole from "@/components/AskConsole.tsx";
 import CitedAnswer from "@/components/CitedAnswer.tsx";
-import PanStage from "@/components/PanStage.tsx";
+import StreamStage from "@/components/StreamStage.tsx";
 import SmoothScroll from "@/components/SmoothScroll.tsx";
 import { Count, CoverForm, DepthGauge } from "@/components/River.tsx";
 import { CORPUS, RECORDED, RUNS } from "@/lib/content.ts";
@@ -10,7 +10,7 @@ const REPO = "https://github.com/SaTyAbHr2005/SiftBase";
 const PAGES = CORPUS.documents.reduce((t, d) => t + d.pages, 0).toLocaleString("en-US");
 const STACK = [
   "FastAPI on Render", "MongoDB Atlas", "SQLite FTS5", "BGE-small vectors", "MiniLM reranker",
-  "Cloudflare Workers AI", "Groq", "Langfuse traces", "Next.js on Vercel", "Three.js", "GSAP", "Lenis",
+  "Cloudflare Workers AI", "Groq", "Langfuse traces", "Next.js on Vercel", "WebGL2", "GSAP", "Lenis",
 ];
 
 function Waterline() {
@@ -30,11 +30,11 @@ export default function Home() {
       <a className="skip" href="#ask">Skip to the question box</a>
       <header className="bar">
         <a className="wordmark" href="#cover">
-          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8c0-1 1-2 3-2h8c2 0 3 1 3 2l-2 6c-.4 1.2-1.4 2-2.7 2H7.7C6.4 16 5.4 15.2 5 14z" /><circle cx="12.5" cy="10.5" r="1.6" /></svg>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 6c3 0 3 3 6 3s3-3 6-3 3 3 4 3M2 12c3 0 3 3 6 3s3-3 6-3 3 3 4 3" /><circle cx="14.5" cy="12.6" r="1.7" /></svg>
           SiftBase
         </a>
         <nav aria-label="Site">
-          <a className="quartz-link" href={REPO}>Source</a>
+          <a className="link" href={REPO}>Source</a>
           <a className="nugget nugget--sm" href="#ask">Ask<span className="wide">a question</span></a>
         </nav>
       </header>
@@ -42,21 +42,23 @@ export default function Home() {
 
       <main>
         <section id="cover" className="cover" aria-labelledby="cover-h">
-          <div className="poster" aria-hidden="true" />
-          <div className="copy still">
+          {/* eslint-disable-next-line @next/next/no-img-element -- pre-sized WebP from scripts/prepare_assets.py; next/image would add Vercel's metered optimiser */}
+          <img className="cover-photo" src="/assets/stream/falls.webp" alt="" width={1376} height={768} fetchPriority="high" decoding="async" />
+          <div className="copy">
             <h1 id="cover-h">
-              <span className="line"><span>Pan {PAGES} pages.</span></span>
-              <span className="line"><span>Keep the <em>gold</em>.</span></span>
+              <span className="line"><span>{PAGES} pages go in.</span></span>
+              <span className="line"><span>Only the <em>gold</em> comes out.</span></span>
             </h1>
             <p className="lede">
-              A knowledge base for AI agents. It checks every claim against the exact source text, drops what it
+              A knowledge base for AI agents. It checks every claim against the exact source text, washes away what it
               cannot prove, and cites the page that holds the rest.
             </p>
             <CoverForm />
           </div>
+          <p className="scroll-cue" aria-hidden="true">Scroll to follow one question down the stream</p>
         </section>
 
-        <PanStage corpus={CORPUS} run={RECORDED} />
+        <StreamStage />
 
         <section id="specimen" className="section" aria-labelledby="specimen-h">
           <Waterline />
@@ -64,8 +66,8 @@ export default function Home() {
             <div className="head">
               <h2 id="specimen-h" className="h2">The gold, with the pages it came from.</h2>
               <p className="lede">
-                The recorded answer from the pan above, as the API returned it on {RECORDED.recorded_at}. Choose a gold
-                flake to bring its source page up beside the claim.
+                The answer at the end of the stream, as the API returned it on {RECORDED.recorded_at}. Choose a gold
+                citation to bring its source page up beside the claim.
               </p>
             </div>
             <CitedAnswer result={RECORDED} question={RECORDED.question} />
@@ -90,14 +92,14 @@ export default function Home() {
             <div className="head">
               <h2 id="measured-h" className="h2">The assay, misses included.</h2>
               <p className="lede">
-                Four runs on the same 8 development questions, scored by the unmodified official evaluator with one judge
+                Five runs on the same 8 development questions, scored by the unmodified official evaluator with one judge
                 model. Purity is answer precision: how much of the answer the judge accepts. Recall is how much of the
                 expected answer it covers.
               </p>
             </div>
-            <div className="assay stone stone--c">
+            <div className="assay stone">
               {RUNS.map((r, i) => (
-                <div className="slip assay-slip" key={r.name} style={{ ["--fan" as string]: `${(i - (RUNS.length - 1) / 2) * 4}deg` }}>
+                <div className="slip assay-slip" key={r.name} style={{ ["--fan" as string]: `${(i - (RUNS.length - 1) / 2) * 3}deg` }}>
                   <span className="slip-name">{r.name}</span>
                   <span className="slip-when">{r.date} · {r.code}</span>
                   {i === 1 && <span className="assay-stamp">Target 80% · not met</span>}
@@ -116,8 +118,8 @@ export default function Home() {
             <div className="variance">
               <p>
                 run_fix4 and run_wait8b used the same retrieval and writing code with no provider failures, and still
-                landed 26 points apart on purity. One run is not a measurement: over the three runs on comparable code
-                (run_fix4, run_wait8b, run_rep_b) the mean is 55.6% purity and 27.1% recall.
+                landed 26 points apart on purity. One run is not a measurement: over the four runs on comparable code
+                (run_fix4, run_wait8b, run_rep_b, run_rep_c) the mean is 53.6% purity and 23.2% recall.
               </p>
               <p className="muted">
                 Most missed points are analysis across several passages, not a fact any single page states. Context scores
@@ -137,7 +139,7 @@ export default function Home() {
                 papers. SiftBase takes any kind of document; this is the set it was evaluated on.
               </p>
             </div>
-            <div className="console stone stone--a">
+            <div className="console stone">
               <AskConsole />
             </div>
           </div>
@@ -178,8 +180,9 @@ export default function Home() {
             </div>
           </div>
           <p className="credit">
-            Free tiers only: no paid model, host or service. River light, riverbed and pan steel scanned by{" "}
-            <a href="https://polyhaven.com">Poly Haven</a> (CC0).
+            Free tiers only: no paid model, host or service. The stream photographs were generated for this site with
+            Google Stitch and brought to life in WebGL2 with depth maps from Depth Anything V2. Riverbed texture by{" "}
+            <a href="https://polyhaven.com/a/ganges_river_pebbles">Poly Haven</a> (CC0).
           </p>
         </div>
       </footer>
