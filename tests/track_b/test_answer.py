@@ -254,7 +254,7 @@ def test_synthesis_writes_each_obligation_group_in_parallel_with_its_own_evidenc
         if n!="answer": return FakeLLM.default(n,p)
         seen.append(([e["id"] for e in p["evidence"]],p["short_answer"],p["role"]))
         e=p["evidence"][0]
-        st={"kind":"finding","text":"Same sentence.","cites":[{"evidence_id":e["id"],"span_ids":["S1"]}]}
+        st={"kind":"finding","text":"Same sentence of 99 units.","cites":[{"evidence_id":e["id"],"span_ids":["S1"]}]}
         return {"status":"answered","sections":[{"heading":p["obligations"][0]["text"],"statements":[
             {**st,"text":e["source_spans"]["S1"]},st]}]}
     draft=generate_answer(FakeLLM(respond),"assess capital and liquidity",plan,numbered,{"a":store.doc("a")},settings(tmp_path,analytical_writer_mode="synthesis"))
@@ -262,11 +262,11 @@ def test_synthesis_writes_each_obligation_group_in_parallel_with_its_own_evidenc
     assert sorted(seen)==[(["E1","E2"],False,"appraisal"),(["E1","E2"],True,"findings")]
     texts=[c.text for c in draft.claims]
     # Eligibility is advisory now: an exact citation makes a draft checkable, not supported.
-    assert texts.count("Same sentence.")==1 and "Liquidity was 140 percent." in texts
+    assert texts.count("Same sentence of 99 units.")==1 and "Liquidity was 140 percent." in texts
     def check(n,p):
-        return {"verdicts":[{"claim_id":c["claim_id"],"verdict":"unsupported" if c["text"]=="Same sentence." else "supported"} for c in p["claims"]]}
+        return {"verdicts":[{"claim_id":c["claim_id"],"verdict":"unsupported" if c["text"]=="Same sentence of 99 units." else "supported"} for c in p["claims"]]}
     checked,_=verify_answer(FakeLLM(check),draft,numbered,settings(tmp_path))
-    assert "Same sentence." not in [c.text for c in checked.claims] and len(checked.claims)==2
+    assert "Same sentence of 99 units." not in [c.text for c in checked.claims] and len(checked.claims)==2
 
 
 def big_case(tmp_path,n_facts,respond,**kw):

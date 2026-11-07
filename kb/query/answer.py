@@ -279,6 +279,32 @@ def _calculation_text(calc):
     return f"Calculated: {expression} = {calc['result']} {calc['unit']}{rounding}."
 
 
+def _plain_span(span):
+    """A source span shown as an answer sentence: footnote markers dropped, table pipes and line breaks as "; "."""
+    text=re.sub(r"<sup>.*?</sup>","",display_source(span))
+    text=re.sub(r"\s*(?:<br\s*/?>|\|)\s*",";",text.replace("•",""))
+    return re.sub(r"\s+"," ",re.sub(r";(?:\s*;)*\s*","; ",text)).strip("; ")
+
+
+def _source_wording(text,quotes,query,longest=600,summary=False):
+    """The cited source sentence to state instead of a finding that loses what its sources say: one that states no
+    figure while citing spans that have figures, or one that borrows a 4-word phrase of the question its spans never
+    state (a premise such as "the original 2017 timetable" that the source does not confirm). The writer still chose
+    the evidence; the source supplies the wording. None when the finding is fine or no cited span is short enough."""
+    from .facts import numbers
+    src=" ".join(q["quote"] for q in quotes)
+    own=numbers(text)
+    grams=lambda t:(lambda w:{" ".join(w[i:i+4]) for i in range(len(w)-3)})(re.findall(r"[\w%.'-]+",t.casefold()))
+    figureless=not summary and not own and bool(numbers(src))
+    # A figure the sources do not state was derived by the writer (a ratio, a total); that statement stays as written.
+    echo=own<=numbers(src) and bool((grams(text)&grams(query))-grams(src))
+    if not (figureless or echo):
+        return None
+    words=lambda t:set(re.findall(r"[^\W\d_]{4,}",t.casefold()))
+    pool=[q for q in quotes if len(q["quote"])<=longest and (numbers(q["quote"])&own if own else numbers(q["quote"]) or not figureless)]
+    return max(pool,key=lambda q:(len(numbers(q["quote"])&own),len(words(q["quote"])&words(text))),default=None)
+
+
 def _call_split(llm,ctx,name,system,payloads,limit,split):
     """Split a schema/truncation failure once; never retry budget or transport failures.
     Private retry state stays local. Returns (original payload, result) pairs.
@@ -440,6 +466,12 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None):
                     if quote not in quotes:quotes.append(quote)
                     eids.append(operand['evidence_id'])
             text=_calculation_text(calc) if calc else _labelled(row["kind"],display_source(row["text"]))
+            # A short-answer summary may leave figures out; a copied, unconfirmed premise is wrong anywhere.
+            if (row["kind"]=="finding"
+                    and (source:=_source_wording(text,quotes,query,summary=heading.strip().casefold()=="short answer"))):
+                text=_plain_span(source["quote"]);quotes=[source];eids=[source["evidence_id"]]
+                cited={(source["evidence_id"],sid) for sid,span in spans[source["evidence_id"]].items() if span==source["quote"]}
+                aids=[a for a in aids if a in numbered[eids[0]].aspect_ids] or aids
             if row['kind']=='finding' and re.search(r'\b(?:supervisors?|regulator\w*)\b',text,re.I) and not any(
                     re.search(r'\b(?:supervisors?|regulator\w*)\b',q['quote'],re.I) for q in quotes):
                 reject('unproven_supervisory_authority');continue
