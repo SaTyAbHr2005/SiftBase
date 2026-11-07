@@ -353,7 +353,9 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None):
     if plan.tasks:
         payloads.append({**base,"role":"task_worksheet","short_answer":True,
                          "topics":[t['text'] for t in plan.tasks],
-                         "max_statements":min(48,max(8,6*len(plan.tasks))),
+                         # 37 statements = 600+200*37 = 8,000 output tokens, under Cloudflare's 8,192 ceiling;
+                         # above it a cut-off reply no longer counts as cut off, so it is never split.
+                         "max_statements":min(37,max(8,6*len(plan.tasks))),
                          "facts":[{k:f[k] for k in ("id","evidence_id","span_id","text")} for f in facts],
                          "evidence":block(numbered)})
     elif facts:
