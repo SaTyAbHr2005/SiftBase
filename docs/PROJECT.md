@@ -19,7 +19,7 @@ The API has two routes:
 | Query pipeline | Working on free models only |
 | Model providers | Free-tier chain; private mode keeps documents with Cloudflare and Groq |
 | Access | API keys, per-key and shared daily rate limits, `AT_CAPACITY` when the free answer model is used up |
-| Tests | 408 passed, 1 skipped, 7 slow deselected; run on every push by GitHub Actions |
+| Tests | 417 passed, 1 skipped, 7 slow deselected; run on every push by GitHub Actions |
 | Accuracy target (80% answer precision and recall on the 8-question set) | **Not met** (below) |
 | Latency target (30 s) | **Not met.** Median 34-40 s in the three latest runs |
 
@@ -34,10 +34,15 @@ All runs use the same 8 development questions (B30, C17, C18, C26, C31, C32, A20
 | `run_wait8b`, 2026-11-04 | `0cf3941` | 46.2% / 26.5% | 54.3% / 62.9% | 40 s / 76 s |
 | `run_rep_b`, 2026-11-05 | `61a8118` | 48.2% / 22.7% | 41.7% / 59.0% | 34 s / 56 s |
 | `run_rep_c`, 2026-11-05 | `61a8118` | 47.4% / 11.6% | 45.6% / 60.8% | 38 s / 130 s |
+| `run_lean_a`, 2026-11-07 | lean-payload trial, discarded | 45.3% / 20.7% | 42.2% / 60.5% | 35 s / 118 s |
+| `run_figures_a`, 2026-11-07 | `8e38a2e` | 66.1% / 31.3% | 43.7% / 63.2% | 37 s / 93 s |
+| `run_figures_b`, 2026-11-08 | `8e38a2e` | 61.3% / 31.2% | 49.6% / 67.0% | 34 s / 41 s |
 
-A single run is not a measurement. `run_fix4` and `run_wait8b` used the same retrieval and writing code with no provider failures, yet their answer precision differs by 26 points. The planner, the source check and the writer all give different outputs from run to run, and the judge splits the same benchmark answer into a different number of points each time. Compare the mean of at least 2-3 runs per version, and say how many runs a number comes from.
+A single run is not a measurement. `run_fix4` and `run_wait8b` used the same retrieval and writing code with no provider failures, yet their answer precision differs by 26 points. The planner, the source check and the writer all give different outputs from run to run. The judge is deterministic on identical answers but literal, so a reworded statement can turn a matched point into an extra one. Compare the mean of at least 2-3 runs per version, and say how many runs a number comes from.
 
-Over the four runs since 2026-11-02, answer precision averages 53.6% (range 46.2% to 72.5%, standard deviation 12.6) and answer recall 23.2% (standard deviation 8.7). Three of the four land between 46% and 49% precision, so `run_fix4` sits at the high end of the spread. The two runs on `61a8118` include `ee38235`, which splits a writer reply that was cut off at its output limit. In `run_rep_c` the first half of C26's split was cut off again and is not split further, so C26 answered from half of its evidence.
+The five runs from 2026-11-02 to 2026-11-07 average 51.9% answer precision (range 45.3% to 72.5%, standard deviation 11.6) and 22.8% answer recall (standard deviation 7.6). `run_fix4` sits at the high end, and it was not all Cloudflare: its C17 and C18 answers were written by OpenRouter and Mistral after Cloudflare failed. The two runs on `61a8118` include `ee38235`, which splits a writer reply that was cut off at its output limit. In `run_rep_c` the first half of C26's split was cut off again and is not split further, so C26 answered from half of its evidence.
+
+`8e38a2e` keeps findings in the source's own words. When a statement drops every figure in the passages it cites, or copies a phrase from the question that those passages do not contain, the writer replaces it with the closest cited sentence. Its two runs average 63.7% answer precision and 31.3% answer recall, and each beats every earlier run except `run_fix4`. Two runs are still a small sample. In `run_figures_b` the claim check rejected five of C26's six statements, so C26 scored zero.
 
 Context scores cover a subset of the passages. Since `452ede5` the runner submits the passages cited in the answer first and stops at what one judge call can score, so `run_wait8b`'s context scores cover the first 44-54 of 45-58 passages on four questions. Each row records `submitted_chunks` and `total_chunks`.
 
@@ -147,7 +152,7 @@ Verification: 8 batches run first, then 4 at a time, up to 16. Another wave runs
 
 ## Next steps
 
-1. Measure the current code properly: run the 8 questions 2-3 times and report the mean and spread.
+1. Run `8e38a2e` a third time to firm up its two-run mean, and look at why the claim check rejected most of C26's statements in `run_figures_b`.
 2. Fix the weakest cases. C32 keeps none of the ~64 passages it checks in every run, and in one run the claim check rejected every statement on C31 and C32.
 3. Raise recall with answers that combine facts across passages, measured on questions not used for tuning.
 4. Write `DESIGN.md` and build the frontend, then add CORS for its origin.
