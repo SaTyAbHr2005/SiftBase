@@ -301,7 +301,10 @@ def _source_wording(text,quotes,query,longest=600,summary=False):
     if not (figureless or echo):
         return None
     words=lambda t:set(re.findall(r"[^\W\d_]{4,}",t.casefold()))
-    pool=[q for q in quotes if len(q["quote"])<=longest and (numbers(q["quote"])&own if own else numbers(q["quote"]) or not figureless)]
+    # A formula line or table row can share small figures (1, 0) with a statement, so a span needs three real words
+    # (markup and table pipes removed) to count as a sentence at all.
+    pool=[q for q in quotes if len(q["quote"])<=longest and len(re.findall(r"[^\W\d_]{3,}",_plain_span(q["quote"])))>=3
+          and (numbers(q["quote"])&own if own else numbers(q["quote"]) or not figureless)]
     return max(pool,key=lambda q:(len(numbers(q["quote"])&own),len(words(q["quote"])&words(text))),default=None)
 
 

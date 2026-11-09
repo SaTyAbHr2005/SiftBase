@@ -46,8 +46,17 @@ SOURCES=['Revenue from operations rose to 11,011.18 lakhs from 8,139.32 lakhs.',
          'Management expects demand to stay strong.']
 
 
-def write(tmp_path,query,statements,heading='Findings'):
-    store=MemoryStore({'d':SOURCES})
+def test_a_statement_is_never_rewritten_as_a_formula_line_that_shares_its_figures(tmp_path):
+    q='How is the daily direction of emerging-market equity ETFs defined?'
+    echo='The daily direction of emerging-market equity ETFs is 1 if Open(t) - Open(t-1) > 0, 0 otherwise.'
+    formula='1 if Open ( _t_ ) - Open ( _t_ - 1) - 0, Γ( _t_ )'
+    assert write(tmp_path,q,[(echo,'E1')],sources=[formula])==[echo]
+    row='| Tier 1 | 0 | 8.5%<sup>1</sup> |'  # tags and pipes are not words
+    assert write(tmp_path,q,[(echo,'E1')],sources=[row])==[echo]
+
+
+def write(tmp_path,query,statements,heading='Findings',sources=SOURCES):
+    store=MemoryStore({'d':sources})
     ev={f'E{i+1}':Evidence(el,['a1']) for i,el in enumerate(store.elements)}
     plan=task_plan(query)
     def respond(name,p):
