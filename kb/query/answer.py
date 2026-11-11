@@ -359,9 +359,102 @@ def _writer_limit(payload):
 _APPRAISAL_TOPICS=re.compile(r"limitation|caveat|assumption|control|safeguard|requirement|soundness|monitoring|outcomes|validation|purpose|domain",re.I)
 
 
-def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None):
+PICK_SYSTEM = """You choose evidence for an answer; you never write the answer. Return JSON
+{"tasks":[{"task_id":string,"unit_ids":[string]}]}.
+For each task, list the ids of the units that directly state what the task and the query ask for: the specific
+figures, dates, names, findings, conditions or limitations requested. Skip units that only give background,
+definitions, descriptions of method that were not asked about, legal or boilerplate text, or that repeat a unit you
+already chose. A table cell that states the asked value counts. A unit about a different model, entity, product or
+period than the one the task names does not answer it, even when it uses the same words (check its document). If no
+unit answers a task, return an empty list for it. Use only the listed ids."""
+
+# Sentence ends, except after common abbreviations ("Rs. 500", "Fig. 3", "et al. 2020", "U.S. yields", "e.g. Acme").
+_UNIT_SPLIT = re.compile(r"(?<!\bRs\.)(?<!\bNo\.)(?<!\bvs\.)(?<!\bFig\.)(?<!\bEq\.)(?<!\bal\.)(?<!\bapprox\.)"
+                         r"(?<!\bU\.S\.)(?<!\bU\.K\.)(?<!\be\.g\.)(?<!\bi\.e\.)(?<!\bInc\.)(?<!\bLtd\.)(?<!\bCo\.)"
+                         r"(?<!\bCorp\.)(?<!\bDr\.)(?<!\bMr\.)(?<!\bMs\.)(?<!\bSt\.)(?<!\bcf\.)"
+                         r"(?<=[.!?])\s+(?=[A-Z0-9(])")
+
+
+def _pick_answer(llm,ctx,query,plan,numbered,facts,spans,cards,budget):
+    """The model only chooses, per task, which source sentences answer it; each chosen sentence is a statement in the
+    source's own words. Units are listed under their document's name so one paper's terms are not taken for
+    another's. None when nothing was chosen or the call failed: the caller then runs the task writer."""
+    units=[];seen=set()
+    for f in facts:
+        # A table row keeps its header and a sentence leaning on the one before ("It took ...") keeps that sentence,
+        # as when a fact is restored verbatim; without them the row's columns or the sentence's subject are lost.
+        lead=_plain_span(" ".join(spans[f["evidence_id"]][c] for c in f.get("context_span_ids") or []))
+        for n,s in enumerate(_UNIT_SPLIT.split(_plain_span(f["text"]))):
+            s=s.strip()
+            if lead and n==0 and lead.casefold() not in s.casefold():
+                s=f"{lead}: {s}" if get(numbered[f['evidence_id']].element,"kind")=="table" else f"{lead} {s}"
+            if len(re.findall(r"[^\W\d_]{3,}",s))<3 or s.casefold() in seen:
+                continue
+            seen.add(s.casefold());units.append({"text":s,"fact":f})
+    flat=lambda t:" ".join(t.casefold().split())
+    # A fragment a longer unit already contains only repeats it.
+    units=[u for u in units if not any(len(v["text"])>len(u["text"]) and flat(u["text"]) in flat(v["text"]) for v in units)]
+    if not units:
+        return None
+    cap=max(1,budget//len(plan.tasks))  # the task writer's statement budget, shared out per task
+    docs={}
+    for n,u in enumerate(units,1):
+        u["id"]=f"U{n}";el=numbered[u["fact"]["evidence_id"]].element;doc=get(el,"doc_id")
+        name=field(cards[doc],"file_name",doc) if doc in cards else doc
+        docs.setdefault(name,[]).append({"id":u["id"],"page":get(el,"page_no"),"text":u["text"]})
+    payload={"query":query,"tasks":[{"id":t["id"],"text":t["text"]} for t in plan.tasks],"max_units_per_task":cap,
+             "documents":[{"document":d,"units":us} for d,us in docs.items()]}
+    try:
+        raw=_call(llm,ctx,"answer",PICK_SYSTEM+f"\nList at most {cap} unit ids per task, the most direct first.",
+                  payload,max(1500,600+20*cap*len(plan.tasks)))
+    except BudgetExceeded:
+        raise
+    except Exception as exc:  # the task writer runs instead
+        if ctx:ctx.save("answer_pick_error",{"error":type(exc).__name__,"detail":str(exc)[:300]})
+        return None
+    rows=raw.get("tasks") if isinstance(raw,dict) else None
+    by_id={u["id"]:u for u in units};tasks={t["id"]:t for t in plan.tasks};claims=[];placed={}
+    # A heading is the reader's own topic words for the task (its phrase from the query), and only when every task
+    # has a short one. The planner's task sentence restates the query and can assert a premise no picked sentence
+    # makes ("... as specified in the original 2017 timetable"); so can a whole clause of the query.
+    # Tasks sharing a phrase, or a phrase with no word in it ("?", "(a)"), name nothing: then no task gets a heading.
+    heads={t["id"]:" ".join((t.get("query_anchor") or "").split()).strip(" \"'“”.?!:;,") for t in plan.tasks}
+    named=lambda h:0<len(h.split())<=4 and re.search(r"[^\W\d_]{3,}",h)
+    if len({h.casefold() for h in heads.values()})<max(2,len(heads)) or not all(map(named,heads.values())):
+        heads=dict.fromkeys(heads,"")
+    for row in rows if isinstance(rows,list) else []:
+        tid=row.get("task_id") if isinstance(row,dict) else None
+        ids=row.get("unit_ids") if isinstance(tid,str) and tid in tasks else None
+        taken=0
+        for uid in ids if isinstance(ids,list) else []:
+            if taken==cap:
+                break
+            if not isinstance(uid,str) or uid not in by_id:
+                continue
+            taken+=1
+            if uid in placed:  # one sentence answering two tasks is shown once and counts for both
+                if tid not in placed[uid].requirement_ids:placed[uid].requirement_ids.append(tid)
+                continue
+            f=by_id[uid]["fact"];eid=f["evidence_id"]
+            aids=[a for a in tasks[tid]["obligation_ids"] if a in numbered[eid].aspect_ids] or list(numbered[eid].aspect_ids)
+            quotes=[{"evidence_id":eid,"quote":spans[eid][x]} for x in f.get("context_span_ids",[])+[f["span_id"]]]
+            placed[uid]=Claim(f"c{len(claims)+1}",by_id[uid]["text"],[eid],aids,quotes,verification="picked",
+                              requirement_ids=[tid],section=heads[tid],
+                              kind="finding",fact_ids=[f["id"]])
+            claims.append(placed[uid])
+    if ctx:
+        ctx.save("answer_selection_validation",{"accepted":len(claims),"mode":"pick","units":len(units),"per_task":cap})
+    if not claims:
+        return None
+    topics=[{'id':t['id'],'text':t['text'],'operation':t['operation']} for t in plan.tasks]
+    return AnswerDraft(claims,"answered",list(plan.limitations),topics,facts=facts,
+                       worksheet=bind_results(plan.tasks,[],numbered,spans))
+
+
+def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None,cards=None):
     """Task writers use all verified spans and an advisory inventory. Taskless compatibility mode
-    groups inventoried findings; final semantic checks remain separate from writer eligibility."""
+    groups inventoried findings; final semantic checks remain separate from writer eligibility.
+    In pick mode the model only chooses which source sentences answer each task (the task writer runs if it fails)."""
     from .facts import inventory,states,trim_secondary,select_facts
     spans=source_spans(numbered)
     aspect_ids={a.aspect_id for a in plan.aspects}
@@ -370,6 +463,12 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None):
     facts,trimmed=trim_secondary(inventory(numbered,spans,topics),query)
     facts,selection=select_facts(facts,query,topics,value(settings,'analytical_fact_chars'))
     if ctx:ctx.save('answer_fact_selection',selection)
+    # 37 statements = 600+200*37 = 8,000 output tokens, under Cloudflare's 8,192 ceiling (see the task worksheet below).
+    worksheet_budget=min(37,max(8,6*len(plan.tasks)))
+    if plan.tasks and facts and value(settings,'analytical_writer_mode')=='pick':
+        picked=_pick_answer(llm,ctx,query,plan,numbered,facts,spans,cards or {},worksheet_budget)
+        if picked:
+            return picked
     appraise=plan.intent!="factoid"
     page=lambda eid:(get(numbered[eid].element,"doc_id"),get(numbered[eid].element,"page_no"),get(numbered[eid].element,"idx",0))
     block=lambda eids:[{"id":eid,"doc_id":get(numbered[eid].element,"doc_id"),"page":get(numbered[eid].element,"page_no"),
@@ -384,7 +483,7 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None):
                          "topics":[t['text'] for t in plan.tasks],
                          # 37 statements = 600+200*37 = 8,000 output tokens, under Cloudflare's 8,192 ceiling;
                          # above it a cut-off reply no longer counts as cut off, so it is never split.
-                         "max_statements":min(37,max(8,6*len(plan.tasks))),
+                         "max_statements":worksheet_budget,
                          "facts":[{k:f[k] for k in ("id","evidence_id","span_id","text")} for f in facts],
                          "evidence":block(numbered)})
     elif facts:
@@ -545,8 +644,8 @@ def generate_answer(llm,query,plan,numbered,cards,settings,*,ctx=None):
         from .ledger import generate_ledger_answer
         return generate_ledger_answer(llm,query,plan,numbered,settings,ctx)
     explanatory = narrow_factoid(plan,query) and not any(ev.fact_value and ev.relevance=='direct' for ev in numbered.values())
-    if mode=='synthesis' and (not narrow_factoid(plan,query) or explanatory):
-        return generate_synthesis(llm,query,plan,numbered,settings,ctx=ctx)
+    if mode in ('synthesis','pick') and (not narrow_factoid(plan,query) or explanatory):
+        return generate_synthesis(llm,query,plan,numbered,settings,ctx=ctx,cards=cards)
     spans=source_spans(numbered)
     requirements=requested_topics(query,plan.intent)
     payload={"query":query,"requested_topics":requirements,"obligations":[{"id":a.aspect_id,"text":a.text,"entity":a.entity,"period":a.period,"scope":a.scope} for a in plan.aspects],
@@ -768,6 +867,27 @@ def verify_answer(llm,draft,numbered,settings,*,ctx=None,query=""):
     if not draft.claims:
         draft.worksheet=[{**t,'completion':'unresolved'} for t in draft.worksheet]
         return draft,{"accepted":0,"rejected":0,"skipped":"no claims"}
+    if all(c.verification=="picked" and not c.calculation for c in draft.claims):
+        # Picked sentences are the source's own words, so there is no wording to check; each covers the tasks it was
+        # picked for.
+        rows=[{"requirement_id":t["id"],"status":"supported",
+               "claim_ids":[c.claim_id for c in draft.claims if t["id"] in c.requirement_ids]} for t in draft.requested_topics]
+        topics=audit_topic_coverage(draft.requested_topics,[r for r in rows if r["claim_ids"]],draft.claims)
+        limits=list(draft.limitations)
+        missing=[t['text'] for t in topics if t['status']!='supported']
+        if missing:
+            limits.append('Requested topics not fully supported by final claims: '+', '.join(missing))
+        done={t['id'] for t in topics if t['status']=='supported'}
+        worksheet=[{**task,'completion':'supported' if task['id'] in done else 'unresolved',
+                    'claim_ids':next((t['claim_ids'] for t in topics if t['id']==task['id']),[])} for task in draft.worksheet]
+        if any(t['completion']!='supported' for t in worksheet):
+            limits.append('Some requested operations remain unresolved; see task worksheet')
+        if ctx and draft.facts:
+            final={f for c in draft.claims for f in c.fact_ids}
+            ctx.save("answer_fact_coverage",{"facts":len(draft.facts),"in_final_answer":len(final),"restored_after_check":[],
+                                             "missing":[f["id"] for f in draft.facts if f["id"] not in final]})
+        return (AnswerDraft(draft.claims,"partial" if limits else draft.status,limits,topics,draft.ledger_records,draft.facts,worksheet),
+                {"accepted":len(draft.claims),"gaps":0,"rejected":0,"source_picked":len(draft.claims),"requested_topics":topics})
     # Absence claims are claims too: compare them with the entire inspected portfolio.
     gaps={c.claim_id for c in draft.claims if c.kind=="gap"}
     def comparable(c):
