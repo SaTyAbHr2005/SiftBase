@@ -19,9 +19,9 @@ The API has two routes:
 | Query pipeline | Working on free models only |
 | Model providers | Free-tier chain; private mode keeps documents with Cloudflare and Groq |
 | Access | API keys, per-key and shared daily rate limits, `AT_CAPACITY` when the free answer model is used up |
-| Tests | 417 passed, 1 skipped, 7 slow deselected; run on every push by GitHub Actions |
+| Tests | 430 passed, 1 skipped, 7 slow deselected; run on every push by GitHub Actions |
 | Accuracy target (80% answer precision and recall on the 8-question set) | **Not met** (below) |
-| Latency target (30 s) | **Not met.** Median 34-40 s in the three latest runs |
+| Latency target (30 s) | **Not met** by the default writer: median 34-40 s. The opt-in pick writer's two runs had medians of 14 s and 20 s, at lower precision |
 
 ## Measured results
 
@@ -37,12 +37,16 @@ All runs use the same 8 development questions (B30, C17, C18, C26, C31, C32, A20
 | `run_lean_a`, 2026-11-07 | lean-payload trial, discarded | 45.3% / 20.7% | 42.2% / 60.5% | 35 s / 118 s |
 | `run_figures_a`, 2026-11-07 | `8e38a2e` | 66.1% / 31.3% | 43.7% / 63.2% | 37 s / 93 s |
 | `run_figures_b`, 2026-11-08 | `8e38a2e` | 61.3% / 31.2% | 49.6% / 67.0% | 34 s / 41 s |
+| `run_pick_a`, 2026-11-10 | pick writer, before its heading fix | 49.3% / 35.1% | 50.3% / 69.4% | 14 s / 33 s |
+| `run_pick_b`, 2026-11-10 | pick writer, before its heading fix | 44.6% / 33.4% | 51.9% / 69.2% | 20 s / 28 s |
 
 A single run is not a measurement. `run_fix4` and `run_wait8b` used the same retrieval and writing code with no provider failures, yet their answer precision differs by 26 points. The planner, the source check and the writer all give different outputs from run to run. The judge is deterministic on identical answers but literal, so a reworded statement can turn a matched point into an extra one. Compare the mean of at least 2-3 runs per version, and say how many runs a number comes from.
 
 The five runs from 2026-11-02 to 2026-11-07 average 51.9% answer precision (range 45.3% to 72.5%, standard deviation 11.6) and 22.8% answer recall (standard deviation 7.6). `run_fix4` sits at the high end, and it was not all Cloudflare: its C17 and C18 answers were written by OpenRouter and Mistral after Cloudflare failed. The two runs on `61a8118` include `ee38235`, which splits a writer reply that was cut off at its output limit. In `run_rep_c` the first half of C26's split was cut off again and is not split further, so C26 answered from half of its evidence.
 
 `8e38a2e` keeps findings in the source's own words. When a statement drops every figure in the passages it cites, or copies a phrase from the question that those passages do not contain, the writer replaces it with the closest cited sentence. Its two runs average 63.7% answer precision and 31.3% answer recall, and each beats every earlier run except `run_fix4`. Two runs are still a small sample. In `run_figures_b` the claim check rejected five of C26's six statements, so C26 scored zero.
+
+`8d95cf4` adds an opt-in pick writer (`KB_ANALYTICAL_WRITER=pick`). The model only chooses which source sentences answer each task, and the answer quotes them word for word, so no wording check is needed. Its two runs had the highest answer recall so far (mean 34.2%) and the fastest queries (median 14 s and 20 s), but precision fell to a mean of 46.9%. On B30 every point was marked extra because each section heading repeated the planner's task sentence, which states a premise the source does not confirm. The committed version uses the question's own short phrases as headings, or none. Rebuilding both runs' answers from the same picked sentences with the new headings, with no new model calls, raised B30 from 0.00 to 0.86 precision and the two-run mean to 52.1% precision and 34.0% recall. That is still 11.6 points below the default writer on precision, so the default writer is unchanged. A21 scored zero in both pick runs because the picked sentences were auditor boilerplate.
 
 Context scores cover a subset of the passages. Since `452ede5` the runner submits the passages cited in the answer first and stops at what one judge call can score, so `run_wait8b`'s context scores cover the first 44-54 of 45-58 passages on four questions. Each row records `submitted_chunks` and `total_chunks`.
 
