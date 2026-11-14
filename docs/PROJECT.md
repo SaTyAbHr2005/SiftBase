@@ -156,9 +156,10 @@ Verification: 8 batches run first, then 4 at a time, up to 16. Another wave runs
 
 ## Next steps
 
-1. Run `8e38a2e` a third time to firm up its two-run mean, and look at why the claim check rejected most of C26's statements in `run_figures_b`.
-2. Fix the weakest cases. C32 keeps none of the ~64 passages it checks in every run, and in one run the claim check rejected every statement on C31 and C32.
-3. Raise recall with answers that combine facts across passages, measured on questions not used for tuning.
-4. Write `DESIGN.md` and build the frontend, then add CORS for its origin.
-5. Keep rate-limit counts in Atlas so a restart does not reset them.
-6. Remove unused code: duplicate types in `kb/models.py`, `write_answer`, `StepTrace` and `kb/query/demo_app.py`. The ledger writer (`kb/query/ledger.py`) is optional and measured worse.
+1. Run the default writer a third time to firm up its two-run mean, and look at why the claim check rejected most of C26's statements in `run_figures_b`.
+2. Close the pick writer's gaps before measuring it again: on A21 it picks auditor boilerplate and scores zero, and table rows come out as raw cells with their header attached. It has the best recall and the fastest queries so far, so it is worth a fix and two fresh runs.
+3. Fix the weakest cases. C32 keeps none of the ~64 passages it checks in every run, and in one run the claim check rejected every statement on C31 and C32.
+4. Raise recall with answers that combine facts across passages, measured on questions not used for tuning.
+5. Deploy: the API on Render, then the site on Vercel with `SIFTBASE_API_URL` and `SIFTBASE_API_KEY` set. The site calls the API through its own server-side route, so the API needs no CORS.
+6. Keep rate-limit counts in Atlas so a restart does not reset them.
+7. Remove unused code: duplicate types in `kb/models.py`, `write_answer`, `StepTrace` and `kb/query/demo_app.py`. The ledger writer (`kb/query/ledger.py`) is optional and measured worse.
