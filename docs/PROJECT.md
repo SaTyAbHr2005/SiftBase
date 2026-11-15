@@ -152,7 +152,7 @@ Verification: 8 batches run first, then 4 at a time, up to 16. Another wave runs
 - Old indexes: collections built before source-confirmed years have their year checks off until they are re-indexed.
 - Langfuse cost: each model call may be recorded twice, since `kb/llm.py` and the query tracing both log usage. Not confirmed.
 - Licence: PyMuPDF is AGPL or paid commercial.
-- Test coverage: the default `QuerySettings()` writer is `extractive` while the server defaults to `synthesis`, so many tests cover a different mode from production.
+- Writer modes: `QuerySettings()` defaults to the `extractive` writer, the server uses `synthesis` unless `KB_ANALYTICAL_WRITER` sets another mode, and `pick` is opt-in. Many tests therefore cover a different mode from production. Pick mode has its own tests (`tests/track_b/test_picker.py`), but it scored 11.6 points below `synthesis` on answer precision, so its higher recall and faster queries are not enough reason to make it the default.
 
 ## Next steps
 
