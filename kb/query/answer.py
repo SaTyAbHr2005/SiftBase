@@ -308,22 +308,28 @@ def _source_wording(text,quotes,query,longest=600,summary=False):
     return max(pool,key=lambda q:(len(numbers(q["quote"])&own),len(words(q["quote"])&words(text))),default=None)
 
 
-def _call_split(llm,ctx,name,system,payloads,limit,split):
-    """Split a schema/truncation failure once; never retry budget or transport failures.
-    Private retry state stays local. Returns (original payload, result) pairs.
+def _call_split(llm,ctx,name,system,payloads,limit,split,rounds=2):
+    """Split a schema/truncation failure into halves and retry them; a half that fails the same way splits again,
+    at most `rounds` levels deep (halves, then quarters). Never retry budget or transport failures.
+    Private retry state stays local. Returns (payload sent, result) pairs in payload order.
     """
+    return [pair for group in _split_groups(llm,ctx,name,system,payloads,limit,split,rounds) for pair in group]
+
+
+def _split_groups(llm,ctx,name,system,payloads,limit,split,rounds):
+    """One list of (payload sent, result) pairs per payload; every level's retries go out as one round of calls."""
     wire=lambda p:{k:v for k,v in p.items() if not k.startswith('_')}
     results=_call_many(llm,ctx,name,system,[wire(p) for p in payloads],[limit(x) for x in payloads])
     out=[]
     for payload,result in zip(payloads,results):
         schema_error=(isinstance(result,ValueError) or isinstance(result,QueryError) and result.code=='MODEL_SCHEMA')
-        halves=split(payload) if schema_error and not isinstance(result,BudgetExceeded) else None
+        halves=split(payload) if rounds>0 and schema_error and not isinstance(result,BudgetExceeded) else None
         out.append(halves or [(payload,result)])
-    retry=[h for group in out if group and not isinstance(group[0],tuple) for h in group]
-    if retry:
-        again=iter(zip(retry,_call_many(llm,ctx,name,system,[wire(p) for p in retry],[limit(x) for x in retry])))
-        out=[group if isinstance(group[0],tuple) else [next(again) for _ in group] for group in out]
-    return [pair for group in out for pair in group]
+    retry=[h for group in out if not isinstance(group[0],tuple) for h in group]
+    if not retry:
+        return out
+    again=iter(_split_groups(llm,ctx,name,system,retry,limit,split,rounds-1))
+    return [group if isinstance(group[0],tuple) else [pair for _ in group for pair in next(again)] for group in out]
 
 
 def _writer_jobs(facts,topics,plan,settings):

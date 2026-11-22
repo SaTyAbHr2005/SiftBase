@@ -93,6 +93,36 @@ def test_a_cut_off_worksheet_splits_into_smaller_halves_that_keep_all_evidence_a
     assert task['status']!='unresolved' and len(task['inputs'])==2  # one task's inputs from both halves, merged
 
 
+def test_a_half_cut_off_again_splits_again_so_its_facts_are_not_lost(tmp_path):
+    store=MemoryStore({'d':[f'Run {i} took {i+2} seconds.' for i in range(6)]})
+    ev={f'E{i+1}':Evidence(e,['a1']) for i,e in enumerate(store.elements)}
+    plan=task_plan('Assess run times')
+    seen=[]
+    def respond(n,p):
+        if n=='answer':
+            seen.append(len(p['facts']))
+            if len(seen)<=2:  # the whole worksheet, then its first half, are cut off
+                raise ValueError('JSON cut off at the output limit')
+            return {'sections':[{'heading':'Runs','statements':[{'kind':'finding','text':f['text'],'obligation_ids':['a1'],
+                    'cites':[{'evidence_id':f['evidence_id'],'span_ids':[f['span_id']]}]} for f in p['facts']]}],
+                    'task_results':[{'task_id':'T1','status':'supported','inputs':[{'evidence_id':f['evidence_id'],'span_id':f['span_id']} for f in p['facts']]}]}
+        return {'verdicts':[{'claim_id':c['claim_id'],'verdict':'supported'} for c in p['claims']]}
+    draft=generate_answer(FakeLLM(respond),plan.aspects[0].text,plan,ev,{},settings(tmp_path,analytical_writer_mode='synthesis'))
+    assert seen[0]==6 and sorted(seen[1:])==[1,2,3,3]  # whole, both halves, then the cut half's two quarters
+    assert {c.text for c in draft.claims}=={e.text for e in store.elements}  # every run kept
+
+
+def test_split_retries_stop_at_the_depth_limit():
+    from kb.query.answer import _call_split
+    calls=[]
+    def respond(n,p):
+        calls.append(len(p['items']))
+        raise ValueError('cut off')
+    split=lambda p:[{'items':p['items'][:len(p['items'])//2]},{'items':p['items'][len(p['items'])//2:]}] if len(p['items'])>1 else None
+    pairs=_call_split(FakeLLM(respond),None,'answer','s',[{'items':list(range(16))}],lambda p:100,split)
+    assert calls==[16,8,8,4,4,4,4] and len(pairs)==4 and all(isinstance(r,ValueError) for _,r in pairs)
+
+
 def test_task_rows_merge_across_split_replies_but_a_repeat_inside_one_reply_stays():
     from kb.query.worksheet import merge_task_results
     a,b={'task_id':'T1','inputs':[{'evidence_id':'E1'}]},{'task_id':'T1','inputs':[{'evidence_id':'E2'}]}

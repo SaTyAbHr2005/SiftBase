@@ -184,7 +184,8 @@ def test_failed_claim_check_batch_removes_only_its_claims(tmp_path):
             raise QueryError("MODEL_SCHEMA","bad",503)
         return {"verdicts":[{"claim_id":i,"verdict":"supported"} for i in ids]}
     draft,report=verify_answer(FakeLLM(respond),AnswerDraft(claims,"answered"),numbered,settings(tmp_path))
-    assert report["accepted"]==6 and "1 claim-check batches failed" in draft.limitations
+    # 12 claims fail, halves of 6, the half with c1 fails again, its quarters of 3: only c1's quarter is lost
+    assert report["accepted"]==9 and "1 claim-check batches failed" in draft.limitations
 
 
 def _wave_case(tmp_path,keep,**kw):
