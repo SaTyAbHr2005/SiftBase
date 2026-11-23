@@ -4,7 +4,7 @@
 
 SiftBase is a knowledge base for AI agents. Instead of handing back the top-k nearest chunks, it runs each question through ten stages, checks claims against the exact source text, reports what it could not cover, and logs every stage to Langfuse. The API has two routes: POST /index and POST /query.
 
-It runs entirely on free model tiers. The accuracy target (80% answer precision and recall on the 8-question development set) is not met yet. [The project guide](docs/PROJECT.md) lists every measured run and how much runs vary.
+It runs entirely on free model tiers. The accuracy target (80% answer precision and 70% answer recall on the 8-question development set) is not met yet. [The project guide](docs/PROJECT.md) lists every measured run and how much runs vary.
 
 Start with [the project guide](docs/PROJECT.md) for the code structure, current status, known bugs and next steps. Deployment is in [docs/DEPLOY.md](docs/DEPLOY.md).
 

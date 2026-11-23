@@ -20,7 +20,7 @@ The API has two routes:
 | Model providers | Free-tier chain; private mode keeps documents with Cloudflare and Groq |
 | Access | API keys, per-key and shared daily rate limits, `AT_CAPACITY` when the free answer model is used up |
 | Tests | 430 passed, 1 skipped, 7 slow deselected; run on every push by GitHub Actions |
-| Accuracy target (80% answer precision and recall on the 8-question set) | **Not met** (below) |
+| Accuracy target (80% answer precision and 70% answer recall on the 8-question set) | **Not met** (below) |
 | Latency target (30 s) | **Not met** by the default writer: median 34-40 s. The opt-in pick writer's two runs had medians of 14 s and 20 s, at lower precision |
 
 ## Measured results
