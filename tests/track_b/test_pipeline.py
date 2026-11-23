@@ -221,6 +221,13 @@ def test_verification_stops_when_later_waves_rarely_keep_anything(tmp_path):
     assert len(batches)==12 and report["stopped_early"]
 
 
+def test_a_steady_low_keep_rate_is_judged_against_the_first_wave(tmp_path):
+    # Gemma 4 keeps about 1 in 8 checked fragments on every wave: a fixed 30% floor stopped every broad question after
+    # the first wave (A21 checked 64 of 153). A wave that keeps at the first wave's pace, on new pages, is still useful.
+    (kept,report),batches=_wave_case(tmp_path,lambda n,e:int(e["id"][1:])==1)
+    assert len(batches)==16 and len(kept)==16
+
+
 def test_a_requested_topic_without_evidence_earns_another_wave(tmp_path):
     from kb.query.screen import verify_elements
     from kb.query.types import QueryPlan,Aspect,Candidate

@@ -58,7 +58,8 @@ def aspects_block(plan):
 
 
 def aspect_refs(raw, known):
-    """Known aspect IDs from a model's list. Some models echo the whole aspects_block line ("a1: text | ...")."""
+    """Known aspect IDs from a model's list. Some models echo the whole aspects_block line ("a1: text | ...").
+    Aspect IDs are "a<n>" (plan.py), so they never contain ':' or '|'."""
     if not isinstance(raw, list):
         return []
     refs = (a.split(":", 1)[0].split("|", 1)[0].strip() for a in raw if isinstance(a, str))
@@ -204,11 +205,12 @@ def verify_elements(llm,store,plan,query,middle,settings,*,ctx=None,_allow_task_
     waves=not fast and len(work)>1
     if waves:
         run_wave(work[:value(settings,"verify_first_wave")])
-    wave_start_kept=set();wave_start_seen=0;split_items=set()
+    wave_start_kept=set();wave_start_seen=0;split_items=set();first_rate=[]
     def worth_another_wave():
         """Ranked candidates get less useful as they go: continue only while a wave still adds something."""
         new=set(kept)-wave_start_kept
         rate=len(new)/max(1,report["elements_seen"]-wave_start_seen)
+        first_rate[:]=first_rate or [rate]
         if report["batches"]>=value(settings,"verify_max_batches") or not new:
             return False
         covered={r for ev in kept.values() for r in ev.requirement_ids}
@@ -216,7 +218,10 @@ def verify_elements(llm,store,plan,query,middle,settings,*,ctx=None,_allow_task_
             return True
         page=lambda key:(get(kept[key].element,"doc_id"),get(kept[key].element,"page_no"))
         new_pages={page(k) for k in new}-{page(k) for k in wave_start_kept}
-        return bool(new_pages) and rate>=value(settings,"verify_min_keep_rate")
+        # Judged against the first wave, because models keep at very different rates (qwen3 ~60%, gemma-4 ~15%):
+        # a wave at half the first wave's pace still finds evidence; the fixed floor is only the upper bound, and a wave
+        # keeping under 1 in 20 never earns another (a tiny first rate must not keep every later wave going).
+        return bool(new_pages) and rate>=min(value(settings,"verify_min_keep_rate"),max(0.05,0.5*first_rate[0]))
     # At most one split recovery for schema failures; after a failure no new calls, paid results still used.
     recovery_used=False;stopped=False
     verified_element_ids=set();budget_denied_batches=[]
