@@ -57,6 +57,14 @@ def aspects_block(plan):
     return "\n".join(f"{a.aspect_id}: {a.text} | entity={a.entity} period={a.period} scope={a.scope}" for a in plan.aspects)
 
 
+def aspect_refs(raw, known):
+    """Known aspect IDs from a model's list. Some models echo the whole aspects_block line ("a1: text | ...")."""
+    if not isinstance(raw, list):
+        return []
+    refs = (a.split(":", 1)[0].split("|", 1)[0].strip() for a in raw if isinstance(a, str))
+    return list(dict.fromkeys(r for r in refs if r in known))
+
+
 def survey_pages(llm,store,plan,query,pool,lexical_net,settings,*,ctx=None):
     picks={};report={"batches":0,"failed_batches":0,"cards_surveyed":0,"lexical_added":0,"truncated":0,"limitations":[]}
     aspect_ids=[a.aspect_id for a in plan.aspects]
@@ -84,7 +92,7 @@ def survey_pages(llm,store,plan,query,pool,lexical_net,settings,*,ctx=None):
         for row in raw.get("pages",[]) if isinstance(raw.get("pages"),list) else []:
             if not isinstance(row,dict) or type(row.get("page_no")) is not int or row["page_no"] not in allowed:
                 continue
-            aids=[a for a in row.get("aspects",[]) if a in aspect_ids] if isinstance(row.get("aspects"),list) else []
+            aids=aspect_refs(row.get("aspects"),aspect_ids)
             if not aids:
                 continue
             strength="high" if row.get("strength")=="high" else "medium"
@@ -281,7 +289,7 @@ def verify_elements(llm,store,plan,query,middle,settings,*,ctx=None,_allow_task_
             if not isinstance(quotes,list) or not quotes or not all(quote_valid(text,q) for q in quotes):
                 report["invalid_quotes"]+=1;continue
             raw_aspects=row.get("aspects",[])
-            aids=[a for a in raw_aspects if isinstance(a,str) and a in aspects and a in candidate.aspect_ids] if isinstance(raw_aspects,list) else []
+            aids=[a for a in aspect_refs(raw_aspects,aspects) if a in candidate.aspect_ids]
             if not aids:
                 continue
             binding=None;dependencies=[]

@@ -30,6 +30,20 @@ def test_equal_text_in_distinct_documents_not_deduplicated(tmp_path):
     assert len(evidence)==2
 
 
+def test_verifier_keeps_evidence_whose_aspect_is_echoed_with_its_label(tmp_path):
+    # Gemma 4 copies the whole aspect line it was shown ("a1: text | entity=..."), where qwen3 returned just "a1".
+    store=MemoryStore({"a":["capital ratio was 14 percent"]})
+    candidates,_=element_retrieval(store,plan(),"capital",[SurveyPick("a",1,["a1"],"high")],[],None,settings(tmp_path))
+    def respond(n,p):
+        out=FakeLLM.default(n,p)
+        if n=="verify":
+            for row in out["keep"]:
+                row["aspects"]=["a1: capital | entity=None period=None scope=None"]
+        return out
+    evidence,_=verify_elements(FakeLLM(respond),store,plan(),"capital",candidates,settings(tmp_path))
+    assert len(evidence)==1 and evidence[0].aspect_ids==["a1"]
+
+
 def test_long_tail_never_marked_verified_without_visibility(tmp_path):
     text="capital row\n"*90+"TAIL UNIQUE 99\n"
     store=MemoryStore({"a":[text]})
