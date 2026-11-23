@@ -381,6 +381,34 @@ _UNIT_SPLIT = re.compile(r"(?<!\bRs\.)(?<!\bNo\.)(?<!\bvs\.)(?<!\bFig\.)(?<!\bEq
                          r"(?<=[.!?])\s+(?=[A-Z0-9(])")
 
 
+def _task_heads(plan):
+    """{task id: heading}. A heading is the reader's own topic words for the task (its phrase from the query), and
+    only when every task has a short one. The planner's task sentence restates the query and can assert a premise
+    ("... as specified in the original 2017 timetable"); so can a whole clause of the query. Tasks sharing a phrase,
+    or a phrase with no word in it ("?", "(a)"), name nothing: then no task gets a heading."""
+    heads={t["id"]:" ".join((t.get("query_anchor") or "").split()).strip(" \"'“”.?!:;,") for t in plan.tasks}
+    named=lambda h:0<len(h.split())<=4 and re.search(r"[^\W\d_]{3,}",h)
+    if len({h.casefold() for h in heads.values()})<max(2,len(heads)) or not all(map(named,heads.values())):
+        return dict.fromkeys(heads,"")
+    return heads
+
+
+def _premise_free_heading(heading,plan):
+    """A writer heading that copies a long task sentence restates the query with its premises (B30: "... as defined
+    in the December 2017 document") and the judge attaches them to every statement below it: use the task's own
+    short heading instead, or none. Short topic headings ("Quality of receivables") stay as written."""
+    # ponytail: word-overlap heuristic (over 12 words, 90% of them from one task sentence); a premise inside a short
+    # heading still passes. Upgrade: check heading words against the cited spans if that shows up.
+    words=lambda t:set(re.findall(r"[^\W\d_]{3,}",t.casefold()))
+    mine=words(heading)
+    if len(heading.split())<=12 or not mine:
+        return heading
+    for task in plan.tasks:
+        if len(mine & words(task.get("text","")))>=0.9*len(mine):
+            return _task_heads(plan).get(task["id"],"")
+    return heading
+
+
 def _pick_answer(llm,ctx,query,plan,numbered,facts,spans,cards,budget):
     """The model only chooses, per task, which source sentences answer it; each chosen sentence is a statement in the
     source's own words. Units are listed under their document's name so one paper's terms are not taken for
@@ -420,14 +448,7 @@ def _pick_answer(llm,ctx,query,plan,numbered,facts,spans,cards,budget):
         return None
     rows=raw.get("tasks") if isinstance(raw,dict) else None
     by_id={u["id"]:u for u in units};tasks={t["id"]:t for t in plan.tasks};claims=[];placed={}
-    # A heading is the reader's own topic words for the task (its phrase from the query), and only when every task
-    # has a short one. The planner's task sentence restates the query and can assert a premise no picked sentence
-    # makes ("... as specified in the original 2017 timetable"); so can a whole clause of the query.
-    # Tasks sharing a phrase, or a phrase with no word in it ("?", "(a)"), name nothing: then no task gets a heading.
-    heads={t["id"]:" ".join((t.get("query_anchor") or "").split()).strip(" \"'“”.?!:;,") for t in plan.tasks}
-    named=lambda h:0<len(h.split())<=4 and re.search(r"[^\W\d_]{3,}",h)
-    if len({h.casefold() for h in heads.values()})<max(2,len(heads)) or not all(map(named,heads.values())):
-        heads=dict.fromkeys(heads,"")
+    heads=_task_heads(plan)
     for row in rows if isinstance(rows,list) else []:
         tid=row.get("task_id") if isinstance(row,dict) else None
         ids=row.get("unit_ids") if isinstance(tid,str) and tid in tasks else None
@@ -537,6 +558,7 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None,cards=None):
     for s,(payload,section) in enumerate((payload,sec) for payload,raw in raws for sec in raw["sections"]):
         rows=section.get("statements") if isinstance(section,dict) else None
         heading=section.get("heading") if isinstance(section,dict) and isinstance(section.get("heading"),str) else ""
+        heading=_premise_free_heading(heading,plan) if plan.tasks else heading
         for i,row in enumerate(rows if isinstance(rows,list) else []):
             def reject(reason):
                 rejections.append({"row":f"{s}.{i}","reason":reason})
@@ -1027,9 +1049,12 @@ def render_verified(draft,numbered,cards):
         if not sectioned:
             lines.append(text);continue
         if claim.section!=heading:
+            printed=heading is not None and any(l.lstrip().startswith("## ") for l in lines)
             heading=claim.section
-            if heading:
-                lines.append(("\n" if lines else "")+f"## {heading}")
+            # Unheaded statements after a heading would read as part of it: give them a neutral one.
+            label=heading or ("Further findings" if printed else "")
+            if label:
+                lines.append(("\n" if lines else "")+f"## {label}")
         lines.append("- "+text)
     sep="\n" if sectioned else "\n\n"
     return sep.join(lines).strip(),{"citations":cited,"evidence_cited":len(used),"evidence_total":len(numbered)}

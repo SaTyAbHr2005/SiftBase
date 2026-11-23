@@ -123,6 +123,29 @@ def test_split_retries_stop_at_the_depth_limit():
     assert calls==[16,8,8,4,4,4,4] and len(pairs)==4 and all(isinstance(r,ValueError) for _,r in pairs)
 
 
+def test_a_long_heading_that_copies_the_task_sentence_is_not_printed(tmp_path):
+    # B30: the writer used the planner's task sentence as its heading, premise and all ("... as defined in the December
+    # 2017 document"); the judge attached that premise to every statement under it. Short topic headings stay.
+    query='Retrieve the specific calibration value for the output floor from 1 January 2025 as defined in the December 2017 document'
+    store=MemoryStore({'d':['The output floor is calibrated at 65% on 1 January 2025.','The output floor reaches 72.5% on 1 January 2030.']})
+    ev={f'E{i+1}':Evidence(e,['a1']) for i,e in enumerate(store.elements)}
+    plan=task_plan(query,'lookup')
+    def respond(n,p):
+        if n=='answer':
+            return {'sections':[{'heading':plan.tasks[0]['text'],'statements':[{'kind':'finding','text':store.elements[0].text,
+                'obligation_ids':['a1'],'cites':[{'evidence_id':'E1','span_ids':['S1']}]}]},
+                {'heading':'Output floor','statements':[{'kind':'finding','text':store.elements[1].text,
+                'obligation_ids':['a1'],'cites':[{'evidence_id':'E2','span_ids':['S1']}]}]}],
+                'task_results':[{'task_id':'T1','status':'supported','inputs':[{'evidence_id':'E1','span_id':'S1'}]}]}
+        return {'verdicts':[{'claim_id':c['claim_id'],'verdict':'supported'} for c in p['claims']]}
+    draft=generate_answer(FakeLLM(respond),query,plan,ev,{},settings(tmp_path,analytical_writer_mode='synthesis'))
+    assert [c.section for c in draft.claims]==['','Output floor']
+    # Shown after a heading, the unheaded statement gets a neutral heading instead of reading as part of it.
+    from kb.query.answer import render_verified
+    text,_=render_verified(replace(draft,claims=draft.claims[::-1]),ev,{'d':store.doc('d')})
+    assert text.index('## Output floor')<text.index('## Further findings') and 'December 2017' not in text
+
+
 def test_task_rows_merge_across_split_replies_but_a_repeat_inside_one_reply_stays():
     from kb.query.worksheet import merge_task_results
     a,b={'task_id':'T1','inputs':[{'evidence_id':'E1'}]},{'task_id':'T1','inputs':[{'evidence_id':'E2'}]}
