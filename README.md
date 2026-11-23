@@ -21,7 +21,7 @@ Create `.env` with your provider keys and Langfuse credentials. Never commit `.e
 
 | Provider | Add to `.env` | Used for |
 |---|---|---|
-| Cloudflare Workers AI | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | `@cf/qwen/qwen3-30b-a3b-fp8` plans, checks sources and writes answers. Needed for usable answers. |
+| Cloudflare Workers AI | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | `@cf/google/gemma-4-26b-a4b-it` plans, checks sources and writes answers. Needed for usable answers. (Cloudflare retired the earlier `@cf/qwen/qwen3-30b-a3b-fp8` on 2026-11-20.) |
 | Groq | `GROQ_API_KEY` | Fallback (`openai/gpt-oss-20b`, `qwen/qwen3.8-27b`) and the scoring judge (`openai/gpt-oss-120b`) |
 | OpenRouter, Mistral, Gemini | `OPENROUTER_API_KEY`, `MISTRAL_API_KEY`, `GEMINI_API_KEY` | Extra fallbacks, used only with `KB_PRIVATE=0` (they may log or train on your documents) |
 

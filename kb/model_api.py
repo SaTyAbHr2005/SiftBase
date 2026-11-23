@@ -12,7 +12,9 @@ THINK = re.compile(r"<think>.*?</think>", re.S)
 # name -> (chat completions URL, key variable, default model, tokens one call may use in a minute)
 CATALOG = {
     "cloudflare": ("https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1/chat/completions",
-                   "CLOUDFLARE_API_TOKEN", "@cf/qwen/qwen3-30b-a3b-fp8", None),
+                   # qwen3-30b-a3b-fp8 was retired on 2026-11-20 (HTTP 410). Writer replay on run_figures_b evidence:
+                   # gemma-4 P 71.1 / R 30.7, glm-4.7-flash 57.9 / 28.6, retired qwen3-30b 41.8 / 15.8.
+                   "CLOUDFLARE_API_TOKEN", "@cf/google/gemma-4-26b-a4b-it", None),
     "groq": ("https://api.groq.com/openai/v1/chat/completions", "GROQ_API_KEY", "openai/gpt-oss-120b", 7500),
     "openrouter": ("https://openrouter.ai/api/v1/chat/completions", "OPENROUTER_API_KEY", "openrouter/free", None),
     "mistral": ("https://api.mistral.ai/v1/chat/completions", "MISTRAL_API_KEY", "ministral-14b-latest", None),
@@ -89,6 +91,9 @@ def request_spec(provider, system, user, max_tokens, json_mode=True):
                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
     if "gpt-oss" in model:
         payload["reasoning_effort"] = "low"
+    if provider.name == "cloudflare" and ("glm-" in model or "gemma-4" in model):
+        # Thinking used the whole output limit and left no answer; these reject reasoning_effort="none" (HTTP 400).
+        payload["chat_template_kwargs"] = {"enable_thinking": False}
     return provider.url, {"Authorization": f"Bearer {provider.key}", "Content-Type": "application/json"}, payload
 
 

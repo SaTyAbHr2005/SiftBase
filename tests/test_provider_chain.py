@@ -448,6 +448,16 @@ def test_wire_format_is_openai_style_and_turns_thinking_down():
     assert oss["reasoning_effort"] == "low" and oss["messages"][0]["content"] == "s"
 
 
+def test_cloudflare_thinking_models_get_thinking_switched_off():
+    # Measured 2026-11-23: with thinking on, glm-4.7-flash and gemma-4 spent the whole output limit reasoning and
+    # returned no answer; chat_template_kwargs.enable_thinking=false is the switch both accept.
+    for model in ("@cf/zai-org/glm-4.7-flash", "@cf/google/gemma-4-26b-a4b-it"):
+        _, _, payload = request_spec(Provider("cloudflare", "u", model, "k"), "s", "u", 100)
+        assert payload["chat_template_kwargs"] == {"enable_thinking": False}
+    for provider in (Provider("groq", "u", "qwen/qwen3.8-27b", "k"), Provider("cloudflare", "u", "@cf/openai/gpt-oss-120b", "k")):
+        assert "chat_template_kwargs" not in request_spec(provider, "s", "u", 100)[2]
+
+
 def test_thinking_text_is_removed_from_replies():
     body = {"choices": [{"message": {"content": '<think>hmm {"no": 1}</think>\n{"ok": true}'}, "finish_reason": "stop"}]}
     assert response_parts(body)[0] == '{"ok": true}'
