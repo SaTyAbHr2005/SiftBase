@@ -146,6 +146,54 @@ def test_a_long_heading_that_copies_the_task_sentence_is_not_printed(tmp_path):
     assert text.index('## Output floor')<text.index('## Further findings') and 'December 2017' not in text
 
 
+def _two_task_case(tmp_path, tags, **kw):
+    """Two tasks; evidence i is tagged with tags[i] (a task id or None). The fake writer states every evidence it is
+    given and, to test filtering, reports task results for BOTH tasks."""
+    q='Assess speed and accuracy'
+    aspects=[Aspect('a1',q,['speed','accuracy'])]
+    tasks=compile_tasks(q,aspects,[
+        {'query_anchor':'speed','operation':'assess','description':'speed','obligation_ids':['a1'],'source_roles':['speed']},
+        {'query_anchor':'accuracy','operation':'assess','description':'accuracy','obligation_ids':['a1'],'source_roles':['accuracy']}])
+    plan=QueryPlan('analytical',aspects,['d'],tasks=tasks)
+    store=MemoryStore({'d':[f'Run {i} took {i+2} seconds.' for i in range(len(tags))]})
+    ev={f'E{i+1}':Evidence(e,['a1'],requirement_ids=[t] if t else []) for i,(e,t) in enumerate(zip(store.elements,tags))}
+    calls=[]
+    def respond(n,p):
+        if n=='answer':
+            calls.append(p)
+            rows=[{'kind':'finding','text':next(e.text for e in store.elements if e.text in ''.join(x['source_spans'].values())),
+                   'obligation_ids':['a1'],'cites':[{'evidence_id':x['id'],'span_ids':['S1']}]} for x in p['evidence']]
+            return {'sections':[{'heading':'Runs','statements':rows}],
+                    'task_results':[{'task_id':t,'status':'supported','inputs':[{'evidence_id':p['evidence'][0]['id'],'span_id':'S1'}]}
+                                    for t in ('T1','T2')]}
+        return {'verdicts':[{'claim_id':c['claim_id'],'verdict':'supported'} for c in p['claims']]}
+    draft=generate_answer(FakeLLM(respond),q,plan,ev,{},settings(tmp_path,analytical_writer_mode='synthesis',**kw))
+    return draft,calls
+
+
+def test_per_task_writers_each_get_their_own_evidence_and_credit(tmp_path):
+    draft,calls=_two_task_case(tmp_path,['T1','T2',None],per_task_writers=True)
+    assert len(calls)==2 and [[t['id'] for t in c['tasks']] for c in calls]==[['T1'],['T2']]
+    assert [sorted(x['id'] for x in c['evidence']) for c in calls]==[['E1','E3'],['E2','E3']]  # untagged E3 shared
+    # No short answer: a writer holding one task's evidence cannot summarise the whole query.
+    assert [c['short_answer'] for c in calls]==[False,False] and all('_task' not in c for c in calls)
+    by_text={c.text:c.requirement_ids for c in draft.claims}
+    assert by_text['Run 0 took 2 seconds.']==['T1'] and by_text['Run 1 took 3 seconds.']==['T2']  # credited to its writer
+    assert len(draft.claims)==3 and by_text['Run 2 took 4 seconds.']==['T1','T2']  # shared E3 kept once, credited to both
+    rows={r['id']:r for r in draft.worksheet}
+    assert len(draft.worksheet)==2 and [i['evidence_id'] for i in rows['T1']['inputs']]==['E1']  # T2's row from T1's writer ignored
+
+
+def test_a_task_with_no_evidence_gets_no_writer_and_one_task_keeps_one_call(tmp_path):
+    draft,calls=_two_task_case(tmp_path,['T1','T1'],per_task_writers=True)
+    assert len(calls)==1 and [t['id'] for t in calls[0]['tasks']]==['T1']  # T2 is not handed T1's evidence
+    assert {r['id']:r['status'] for r in draft.worksheet}['T2']=='unresolved'
+    _,calls=_two_task_case(tmp_path,['T1',None],per_task_writers=True)  # T2 has only untagged evidence: it still writes
+    assert [[t['id'] for t in c['tasks']] for c in calls]==[['T1'],['T2']] and [x['id'] for x in calls[1]['evidence']]==['E2']
+    _,calls=_two_task_case(tmp_path,['T1','T2'])  # off by default: one worksheet call
+    assert len(calls)==1 and len(calls[0]['tasks'])==2
+
+
 def test_task_rows_merge_across_split_replies_but_a_repeat_inside_one_reply_stays():
     from kb.query.worksheet import merge_task_results
     a,b={'task_id':'T1','inputs':[{'evidence_id':'E1'}]},{'task_id':'T1','inputs':[{'evidence_id':'E2'}]}

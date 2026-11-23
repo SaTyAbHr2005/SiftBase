@@ -409,6 +409,28 @@ def _premise_free_heading(heading,plan):
     return heading
 
 
+def _task_payloads(worksheet,plan,numbered,facts,block):
+    """One writer payload per task: the evidence the verifier tagged with that task plus untagged evidence (a repeat
+    across writers is rejected as a duplicate statement), that task's facts and its own statement budget. A task with
+    no evidence of its own gets no writer: it is never handed the other tasks' evidence. `_task` (never sent) credits
+    the writer's statements and task results to its task. No task-tagged evidence at all: the one worksheet call."""
+    shared=[e for e,ev in numbered.items() if not ev.requirement_ids]
+    out=[]
+    if not any(ev.requirement_ids for ev in numbered.values()):
+        return [worksheet]
+    for task in plan.tasks:
+        mine=[e for e,ev in numbered.items() if task["id"] in ev.requirement_ids]
+        if not mine and not shared:
+            continue
+        eids=set(mine+shared)
+        own=[{k:f[k] for k in ("id","evidence_id","span_id","text")} for f in facts if f["evidence_id"] in eids]
+        # No short answer: a writer holding one task's evidence cannot summarise the whole query.
+        out.append({**worksheet,"tasks":[task],"topics":[task["text"]],"short_answer":False,
+                    # 37 statements = 8,000 output tokens, under Cloudflare's 8,192 ceiling (see the worksheet budget).
+                    "max_statements":min(37,max(8,len(own)+4)),"facts":own,"evidence":block(eids),"_task":task["id"]})
+    return out or [worksheet]
+
+
 def _pick_answer(llm,ctx,query,plan,numbered,facts,spans,cards,budget):
     """The model only chooses, per task, which source sentences answer it; each chosen sentence is a statement in the
     source's own words. Units are listed under their document's name so one paper's terms are not taken for
@@ -506,13 +528,15 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None,cards=None):
     if plan.tasks: base["tasks"]=plan.tasks
     payloads=[]
     if plan.tasks:
-        payloads.append({**base,"role":"task_worksheet","short_answer":True,
-                         "topics":[t['text'] for t in plan.tasks],
-                         # 37 statements = 600+200*37 = 8,000 output tokens, under Cloudflare's 8,192 ceiling;
-                         # above it a cut-off reply no longer counts as cut off, so it is never split.
-                         "max_statements":worksheet_budget,
-                         "facts":[{k:f[k] for k in ("id","evidence_id","span_id","text")} for f in facts],
-                         "evidence":block(numbered)})
+        worksheet={**base,"role":"task_worksheet","short_answer":True,
+                   "topics":[t['text'] for t in plan.tasks],
+                   # 37 statements = 600+200*37 = 8,000 output tokens, under Cloudflare's 8,192 ceiling;
+                   # above it a cut-off reply no longer counts as cut off, so it is never split.
+                   "max_statements":worksheet_budget,
+                   "facts":[{k:f[k] for k in ("id","evidence_id","span_id","text")} for f in facts],
+                   "evidence":block(numbered)}
+        split_tasks=value(settings,'per_task_writers') and len(plan.tasks)>1
+        payloads.extend(_task_payloads(worksheet,plan,numbered,facts,block) if split_tasks else [worksheet])
     elif facts:
         for j,job in enumerate(_writer_jobs(facts,topics,plan,settings)):
             short=j==0 and appraise
@@ -545,7 +569,10 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None,cards=None):
             return [{**payload,"short_answer":payload["short_answer"] and i==0,"evidence":part,
                      "max_statements":max(4,payload["max_statements"]//2)} for i,part in enumerate((payload["evidence"][:half],payload["evidence"][half:]))]
         return None
-    pairs=_call_split(llm,ctx,"answer",SYNTH_SYSTEM+(TASK_SYSTEM if plan.tasks else ""),payloads,_writer_limit,split)
+    # Up to 7 calls per payload when halves are cut again: with 3+ writers that could empty the 24-call answer pool the
+    # claim check also draws on, so they split once.
+    pairs=_call_split(llm,ctx,"answer",SYNTH_SYSTEM+(TASK_SYSTEM if plan.tasks else ""),payloads,_writer_limit,split,
+                      rounds=1 if len(payloads)>2 else 2)
     raws=[(payload,r) for payload,r in pairs if isinstance(r,dict) and isinstance(r.get("sections"),list)]
     if not raws and not facts:
         bad=[r for _,r in pairs if isinstance(r,BudgetExceeded)]
@@ -608,6 +635,10 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None,cards=None):
             docs=frozenset(get(numbered[e].element,"doc_id") for e in eids)
             scope=tuple(sorted(cited)) if cited else ('gap',)
             if _repeats(text,seen,docs,scope):
+                # Two task writers stating the same shared evidence: one claim, credited to both tasks.
+                earlier=next((c for c,s in zip(claims,seen) if _repeats(text,[s],docs,scope)),None)
+                if earlier is not None and payload.get('_task') and payload['_task'] not in earlier.requirement_ids:
+                    earlier.requirement_ids.append(payload['_task'])
                 reject("duplicate_statement");continue
             # A fact counts as written only if this statement cites its sentence and keeps all its figures (whether or
             # not the writer listed its ID; an appraisal statement can carry a fact too).
@@ -616,7 +647,8 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None,cards=None):
             if summary:summaries+=1
             seen.append((text,docs,scope))
             covered.update(carried)
-            tids=[t['id'] for t in plan.tasks if any(a in t['obligation_ids'] for a in aids)]
+            tids=([payload['_task']] if payload.get('_task') else
+                  [t['id'] for t in plan.tasks if any(a in t['obligation_ids'] for a in aids)])
             claims.append(Claim(f"c{len(claims)+1}",text,list(dict.fromkeys(eids)),aids,quotes,calc,
                                 requirement_ids=tids,section=heading.strip(),kind=row["kind"],fact_ids=carried))
     restored=(_restore_facts([f for f in facts if f["id"] not in covered],numbered,spans,claims,topics)
@@ -636,7 +668,10 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None,cards=None):
                                                "facts_restored_verbatim":restored,
                                                "facts_trimmed":[{"text":f["text"],"reason":why} for f,why in trimmed]})
     partial=limits or any(raw.get("status")=="partial" for _,raw in raws)
-    worksheet=bind_results(plan.tasks,merge_task_results([raw.get('task_results',[]) for _,raw in raws]),numbered,spans) if plan.tasks else []
+    # A per-task writer's results count only for its own task.
+    own=lambda payload,rows:[r for r in rows if not payload.get('_task') or isinstance(r,dict) and r.get('task_id')==payload['_task']]
+    worksheet=bind_results(plan.tasks,merge_task_results([own(p,raw.get('task_results',[]) if isinstance(raw.get('task_results'),list) else [])
+                                                          for p,raw in raws]),numbered,spans) if plan.tasks else []
     if ctx and worksheet:ctx.save('task_worksheet',worksheet)
     return AnswerDraft(claims,"partial" if partial else "answered",limits,topics,facts=facts,worksheet=worksheet)
 

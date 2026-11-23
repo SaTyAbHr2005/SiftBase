@@ -62,6 +62,9 @@ class QuerySettings:
     # extractive: copied sentences; ledger: source-ID findings rendered from source text; synthesis: cited analyst
     # write-up with labelled finding/inference/gap statements. A narrow single-value factoid is always extractive.
     analytical_writer_mode: str = "extractive"
+    # One writer call per task (its own tagged evidence and statement budget) instead of one worksheet call for all
+    # tasks: a single call wrote 6-12 statements for 4 tasks. Opt-in (KB_PER_TASK_WRITERS=1) until runs show it helps.
+    per_task_writers: bool = False
     ledger_extraction_mode: str = "integrated"
     ledger_output_tokens: int = 8000
     ledger_quote_chars: int = 30000
@@ -95,7 +98,8 @@ def budget(settings, intent, key):
 def from_environment():
     return QuerySettings(ledger_extraction_mode=os.getenv("KB_LEDGER_EXTRACTION","integrated"),analytical_writer_mode=os.getenv("KB_ANALYTICAL_WRITER","synthesis"),metadata_navigation_enabled=os.getenv("KB_METADATA_NAVIGATION","1")!="0",page_selection_mode=os.getenv("KB_PAGE_SELECTION","local"),artifact_dir=Path(os.getenv("KB_RUN_DIR", "artifacts/runs")),
                          strict_observability=os.getenv("KB_REQUIRE_LANGFUSE", "1") != "0",
-                         query_deadline_s=float(os.getenv("KB_QUERY_DEADLINE_S", "30")))
+                         query_deadline_s=float(os.getenv("KB_QUERY_DEADLINE_S", "30")),
+                         per_task_writers=os.getenv("KB_PER_TASK_WRITERS", "0") == "1")
 
 
 class SharedQuerySettings:
@@ -105,7 +109,7 @@ class SharedQuerySettings:
         self._query=from_environment()
 
     def __getattr__(self,name):
-        if name in ("strict_observability","query_deadline_s","artifact_dir","page_selection_mode","metadata_navigation_enabled","analytical_writer_mode","ledger_extraction_mode"):
+        if name in ("strict_observability","query_deadline_s","artifact_dir","page_selection_mode","metadata_navigation_enabled","analytical_writer_mode","ledger_extraction_mode","per_task_writers"):
             return getattr(self._query,name)
         if hasattr(self._shared,name):
             return getattr(self._shared,name)
