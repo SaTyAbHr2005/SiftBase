@@ -35,7 +35,7 @@ from kb.models import BLANK_PAGE_SUMMARY, DocCard, Embedder, PageCard, PageText,
 from kb.registry import Registry
 from kb.store import Store
 
-CACHE_VERSION = 7
+CACHE_VERSION = 8  # 8: numbers split by markdown emphasis ("60 _,_ 000") are stored whole
 
 log = logging.getLogger("kb.ingest")
 COLLECTION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
