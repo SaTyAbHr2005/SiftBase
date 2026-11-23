@@ -461,16 +461,19 @@ def local_survey_pages(plan,pool,lexical_net,page_report,settings):
         ranked=page_report.get("documents",{}).get(doc,{}).get("ranked_pages",pages)
         route=page_report.get("documents",{}).get(doc,{}).get("navigation",{})
         preferred=route.get("preferred_pages",[])
+        # Keyword-hit pages in search-rank order, not page order: page order spent the budget on early pages first.
+        position={p:i for i,p in reversed(list(enumerate(ranked)))}  # a page's first rank wins
+        hits=sorted(lexical_net.get(doc,set()) & allowed,key=lambda p:(position.get(p,len(position)),p))
         if plan.intent!="factoid" and len(pages)<=value(settings,"short_doc_pages"):
             # Short document: every page is eligible; local cross-encoder triage (free) ranks the elements and only
             # the verification budget, never a page's rank, decides what reaches the paid check.
-            chosen=route.get("direct_pages",[])+sorted(lexical_net.get(doc,set()) & allowed)+list(ranked)+list(pages)
+            chosen=route.get("direct_pages",[])+hits+list(ranked)+list(pages)
         elif route.get("focused"):
             outside=[p for p in ranked if p not in preferred][:value(settings,"metadata_fallback_pages")]
             chosen=preferred+outside
         else:
             chosen=(list(pages) if plan.intent=="exhaustive" else route.get("direct_pages",[])+
-                    sorted(lexical_net.get(doc,set()) & allowed)+
+                    hits+
                     [p for p in ranked[:value(settings,"local_pages_per_doc")] if p in allowed])
         bydoc[doc]=list(dict.fromkeys(chosen))
     fair=[]

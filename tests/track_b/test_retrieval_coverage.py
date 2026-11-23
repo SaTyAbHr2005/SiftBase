@@ -24,6 +24,15 @@ def test_decisive_limitation_on_the_last_page_reaches_verification(tmp_path):
     assert middle[0].element.page_no==24  # verified first, before the budget runs out
 
 
+def test_keyword_hit_pages_are_surveyed_in_rank_order_not_page_order(tmp_path):
+    # C32 (qwen3 run): the gold FDIC pages were keyword hits but came after early-numbered pages, and the 12-page budget
+    # shared over 7 documents ran out first. A document's keyword hits must follow its search rank.
+    p=QueryPlan("factoid",[Aspect("a1","loan-loss allowances",["allowances"])],["a"])
+    report={"documents":{"a":{"ranked_pages":[38,20,3,7]}}}
+    picks,_=local_survey_pages(p,{"a":list(range(1,41))},{"a":{3,38}},report,settings(tmp_path))
+    assert [x.page_no for x in picks][:2]==[38,3]
+
+
 def test_each_task_role_gets_a_candidate_before_repeated_aspect_hits(tmp_path):
     tasks=[{'id':f'T{i}','operation':'inspect','obligation_ids':['a1'],'source_roles':[f'role {i}']}
            for i in range(1,4)]
