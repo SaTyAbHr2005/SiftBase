@@ -310,6 +310,13 @@ def test_words_glued_by_a_font_with_no_space_stay_as_separate_readable_words():
     assert _drop_garbled_lines(cleaned) == cleaned
 
 
+def test_numbers_split_by_markdown_emphasis_are_stored_whole():
+    from kb.ingest.parse import _clean
+    # The converter wraps an italic comma or point in underscores: "60 _,_ 000" must be indexed as "60,000".
+    assert _clean("about 60 _,_ 000 grid points and an error of 0 _._ 05%") == "about 60,000 grid points and an error of 0.05%"
+    assert _clean("Version _._ unknown; x_y; 12,000") == "Version _._ unknown; x_y; 12,000"
+
+
 def test_broken_font_lines_are_replaced_by_what_ocr_reads(tmp_path, monkeypatch):
     from kb.ingest import parse
     monkeypatch.setattr(parse, "_is_garbled", lambda layer: True)

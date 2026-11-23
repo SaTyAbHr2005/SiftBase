@@ -19,6 +19,7 @@ from kb.config import Settings
 from kb.ingest.convert import sidecar_for
 from kb.ingest.ocr import get_ocr_engine
 from kb.models import PageText, ParsedDoc
+from kb.query.utils import display_source
 
 log = logging.getLogger(__name__)
 
@@ -50,7 +51,9 @@ def read_pdf_info(path: Path) -> tuple[str, int, list[tuple[int, str, int]], dic
 
 
 def _clean(md: str) -> str:
-    return _GLUED.sub(" ", _IMAGE_LINK.sub("", md or "")).strip()
+    # The converter wraps an italic comma or point in underscores ("60 _,_ 000"); store the number whole so search,
+    # verification quotes and the claim check all see "60,000".
+    return display_source(_GLUED.sub(" ", _IMAGE_LINK.sub("", md or "")))
 
 
 def _markdown(doc, idx: list[int], settings: Settings, name: str, drop_margins: bool) -> dict[int, str]:
