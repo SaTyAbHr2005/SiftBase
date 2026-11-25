@@ -12,8 +12,9 @@ class QuerySettings:
     plan_catalogue_bytes: int = 12000  # about 3k tokens: small enough for the fast free models
     plan_deadline_s: float = 20  # after this the query plans from its own words; Cloudflare planning took up to 8.4 s
     # Time verification always gets, however long earlier stages took. 15 s cut gemma-4's first verify call on C18
-    # (11.8k input tokens) after a 13.7 s plan, leaving the question with no evidence at all.
-    verify_min_s: float = 30
+    # (11.8k input tokens) after a 13.7 s plan, leaving the question with no evidence at all. 30 s still fit only one
+    # concurrent wave of ~30 s (run_gemma_b: C26 left 177 of 233 candidates unchecked, C32 84 of 108).
+    verify_min_s: float = 60
     max_obligations: int = 64
     page_selection_mode: str = "local"
     local_pages_per_doc: int = 5
