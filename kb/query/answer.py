@@ -393,6 +393,18 @@ def _task_heads(plan):
     return heads
 
 
+_ID_PARENS=re.compile(r"\s*\((?:citing\s+)?([EF]\d+(?::S\d+)?(?:\s*[,;]\s*(?:and\s+)?[EF]\d+(?::S\d+)?)*)\)")
+
+
+def _without_internal_ids(text,known):
+    """Drop parentheses that hold only this answer's evidence/fact IDs ("(E10:S1, E2:S7)", "(citing F66, F7)"): the
+    writer's working references mean nothing to a reader. Parentheses naming anything else are kept."""
+    def drop(m):
+        ids=[x.split(':')[0] for x in re.split(r"\s*[,;]\s*(?:and\s+)?",m.group(1))]
+        return "" if all(x in known for x in ids) else m.group(0)
+    return _ID_PARENS.sub(drop,text)
+
+
 def _premise_free_heading(heading,plan):
     """A writer heading that copies a long task sentence restates the query with its premises (B30: "... as defined
     in the December 2017 document") and the judge attaches them to every statement below it: use the task's own
@@ -582,6 +594,7 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None,cards=None):
         by_span.setdefault((f["evidence_id"],f["span_id"]),[]).append(f)
     claims=[];rejections=[];gaps=0;seen=[];covered=set();summaries=0
     max_gaps=max(10,2*len(topics))
+    known_ids=set(numbered)|{f["id"] for f in facts}
     for s,(payload,section) in enumerate((payload,sec) for payload,raw in raws for sec in raw["sections"]):
         rows=section.get("statements") if isinstance(section,dict) else None
         heading=section.get("heading") if isinstance(section,dict) and isinstance(section.get("heading"),str) else ""
@@ -590,7 +603,8 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None,cards=None):
             def reject(reason):
                 rejections.append({"row":f"{s}.{i}","reason":reason})
             if not isinstance(row,dict) or row.get("kind") not in ("finding","calculation","inference","gap") \
-                    or not isinstance(row.get("text"),str) or not row["text"].strip() or len(row["text"])>1200:
+                    or not isinstance(row.get("text"),str) or len(row["text"])>1200 \
+                    or not _without_internal_ids(row["text"],known_ids).strip():
                 reject("malformed_statement");continue
             aids=[a for a in row.get("obligation_ids") or [] if isinstance(a,str) and a in aspect_ids]
             quotes=[];eids=[];cited=set()
@@ -622,7 +636,8 @@ def generate_synthesis(llm,query,plan,numbered,settings,*,ctx=None,cards=None):
                     quote={'evidence_id':operand['evidence_id'],'quote':operand['quote']}
                     if quote not in quotes:quotes.append(quote)
                     eids.append(operand['evidence_id'])
-            text=_calculation_text(calc) if calc else _labelled(row["kind"],display_source(row["text"]))
+            text=_calculation_text(calc) if calc else _labelled(row["kind"],display_source(
+                _without_internal_ids(row["text"],known_ids)))
             # A short-answer summary may leave figures out; a copied, unconfirmed premise is wrong anywhere.
             if (row["kind"]=="finding"
                     and (source:=_source_wording(text,quotes,query,summary=heading.strip().casefold()=="short answer"))):

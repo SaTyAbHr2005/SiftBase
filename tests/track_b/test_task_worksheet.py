@@ -146,6 +146,26 @@ def test_a_long_heading_that_copies_the_task_sentence_is_not_printed(tmp_path):
     assert text.index('## Output floor')<text.index('## Further findings') and 'December 2017' not in text
 
 
+def test_internal_evidence_ids_are_removed_from_statement_text(tmp_path):
+    # run_gemma_b A20/C18: the writer put its working IDs into the prose ("(E10:S1, E2:S7)", "(citing F66, F7)"), which
+    # the reader cannot use. Only parentheses holding nothing but IDs of this answer's evidence are removed.
+    query='What is the output floor calibration?'
+    store=MemoryStore({'d':['The output floor is calibrated at 65% on 1 January 2025.','The output floor reaches 72.5% on 1 January 2030.']})
+    ev={f'E{i+1}':Evidence(e,['a1']) for i,e in enumerate(store.elements)}
+    plan=task_plan(query,'lookup')
+    texts=['The output floor is calibrated at 65% on 1 January 2025 (E1:S1, E2:S1).',
+           'The output floor reaches 72.5% on 1 January 2030 (citing E2) under table (E9).','(E1:S1)']
+    def respond(n,p):
+        if n=='answer':
+            return {'sections':[{'heading':'Output floor','statements':[{'kind':'gap' if t.startswith('(') else 'finding','text':t,
+                'obligation_ids':['a1'],'cites':[{'evidence_id':f'E{i%2+1}','span_ids':['S1']}]} for i,t in enumerate(texts)]}],
+                'task_results':[{'task_id':'T1','status':'supported','inputs':[{'evidence_id':'E1','span_id':'S1'}]}]}
+        return {'verdicts':[{'claim_id':c['claim_id'],'verdict':'supported'} for c in p['claims']]}
+    draft=generate_answer(FakeLLM(respond),query,plan,ev,{},settings(tmp_path,analytical_writer_mode='synthesis'))
+    assert [c.text for c in draft.claims]==['The output floor is calibrated at 65% on 1 January 2025.',
+                                            'The output floor reaches 72.5% on 1 January 2030 under table (E9).']
+
+
 def _two_task_case(tmp_path, tags, **kw):
     """Two tasks; evidence i is tagged with tags[i] (a task id or None). The fake writer states every evidence it is
     given and, to test filtering, reports task results for BOTH tasks."""
