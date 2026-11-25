@@ -20,6 +20,33 @@ def test_preserves_explicit_comparison_scopes(tmp_path):
     assert len(plan.aspects)>=4
 
 
+def test_aspect_that_states_an_invented_figure_becomes_its_keywords(tmp_path):
+    # run_gemma_b A20: the planner wrote topics as made-up answers ("95% within 30 days", "current ratio of 2.1").
+    # Search and verification then looked for those figures and rejected real tables. Figures the query does not
+    # contain are dropped; an aspect whose text states one is replaced by its remaining keywords.
+    query="What do receivables and working capital look like in 2025?"
+    def respond(n,p):
+        return {"intent":"analytical","documents":[],"aspects":[
+            {"text":"Receivables are high quality, with 95% within 30 days.","keywords":["receivables","95%","quality"]},
+            {"text":"Working capital in 2025","keywords":["working capital"]},
+            {"text":"Revenue for FY 2024-2025 rose to 1,000","keywords":["revenue","1000"],"period":"2024-2025"}]}
+    plan=plan_query(FakeLLM(respond),query,[],settings(tmp_path))
+    # The aspect's own period is allowed ("2024-2025"); "1,000" and "1000" are the same figure, absent from the query.
+    assert [(a.text,a.keywords) for a in plan.aspects]==[("receivables quality",["receivables","quality"]),
+                                                         ("Working capital in 2025",["working capital"]),
+                                                         ("revenue",["revenue"])]
+    assert all('95' not in t['text'] and '95' not in ' '.join(t['source_roles']) for t in plan.tasks)
+
+
+def test_a_plan_with_three_or_more_aspects_is_not_a_factoid(tmp_path):
+    # run_gemma_b A20: a four-part lender question was planned as 'factoid', so it got the factoid budgets (12 pages,
+    # 40 evidence pieces) and 27 gold passages on pages ranked 13-15 were never retrieved.
+    def plan_with(n):
+        return lambda name,p:{"intent":"factoid","documents":[],"aspects":[{"text":f"topic {c}"} for c in "abcd"[:n]]}
+    assert plan_query(FakeLLM(plan_with(3)),"q",[],settings(tmp_path)).intent=="analytical"
+    assert plan_query(FakeLLM(plan_with(2)),"q",[],settings(tmp_path)).intent=="factoid"
+
+
 def test_confirmed_wrong_period_cannot_reenter_route(tmp_path):
     cards=[Card("old","old.pdf",period_year=2024,sibling_group="example"),Card("new","new.pdf",period_year=2025,sibling_group="example")]
     store=MemoryStore({c.doc_id:["Example Bank capital ratio"] for c in cards},cards)
@@ -88,7 +115,7 @@ def test_planner_failure_records_why(tmp_path):
 
 
 def test_obligation_overflow_is_visible(tmp_path):
-    llm=FakeLLM(lambda n,p:{"aspects":[{"text":str(i)} for i in range(10)]})
+    llm=FakeLLM(lambda n,p:{"aspects":[{"text":f"risk {c}"} for c in "abcdefghij"]})
     plan=plan_query(llm,"all risks",[],settings(tmp_path,max_obligations=2))
     assert len(plan.aspects)==2 and plan.limitations
 

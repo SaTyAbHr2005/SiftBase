@@ -111,6 +111,29 @@ def fit_catalogue(store, query, cards, settings):
     return lines
 
 
+_FIGURE = re.compile(r"\d+(?:[.,]\d+)*")
+
+
+def _figures(text):
+    return {f.replace(",", "") for f in _FIGURE.findall(text or "")}
+
+
+def _without_invented_figures(text, keywords, query, period=None):
+    """A planner aspect is a search topic, not an answer. Gemma wrote some as made-up results ("receivables 95% within
+    30 days", "current ratio of 2.1"); search and verification then hunted for those figures and rejected the real
+    tables. Figures in neither the query nor the aspect's own period are dropped: such an aspect becomes its remaining
+    keywords."""
+    allowed = _figures(query) | _figures(period)
+
+    def invented(s):
+        return bool(_figures(s) - allowed)
+    keywords = [k for k in keywords if not invented(k)]
+    if not invented(text):
+        return text, keywords
+    keywords = keywords or [w for w in terms(text) if not invented(w)][:12]
+    return " ".join(keywords), keywords
+
+
 def plan_query(llm, query, cards, settings, *, ctx=None, store=None):
     hints=query_hints(query,cards)
     fallback=Aspect("a1",query,terms(query)[:16])
@@ -134,6 +157,9 @@ def plan_query(llm, query, cards, settings, *, ctx=None, store=None):
         text=row.get("text",row.get("aspect"))
         raw_keywords=row.get("keywords",row.get("lexical_phrases",[]))
         keywords=[k for k in raw_keywords if isinstance(k,str)] if isinstance(raw_keywords,list) else []
+        text,keywords=_without_invented_figures(text,keywords,query,str(row.get("period") or ""))
+        if not text.strip():
+            continue
         aspects.append(Aspect(f"a{len(aspects)+1}",text,keywords or terms(text)[:12],row.get("entity"),str(row["period"]) if row.get("period") is not None else None,row.get("scope")))
     limit=value(settings,"max_obligations")
     limitations=[]
@@ -153,6 +179,9 @@ def plan_query(llm, query, cards, settings, *, ctx=None, store=None):
                 aspects.append(Aspect(f"a{len(aspects)+1}",query,terms(query)[:16],entity,str(period) if period else None))
             else:
                 limitations.append("Explicit entity/period slot exceeds obligation budget")
+    if intent=="factoid" and len(aspects)>=3:
+        # Three or more separate topics are not one fact: factoid budgets (12 pages, 40 pieces) starved A20.
+        intent="analytical"
     docs=[]; reasons={}
     raw_documents=raw.get("documents",[])
     for row in raw_documents if isinstance(raw_documents,list) else []:
