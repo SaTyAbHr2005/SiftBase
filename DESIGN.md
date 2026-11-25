@@ -1,378 +1,280 @@
 ---
 name: SiftBase
-description: One question runs down a rainforest stream of ten pools, and only the gold that holds is kept.
+description: A dark sorting table where a whole collection lies in stacks, pages fly out one by one, and only the ones that hold get highlighted, stacked and cited.
+platform: desktop (Electron)
 colors:
-  gold: "#E8B23A"
-  gold-hi: "#F6D27A"
-  gold-lo: "#B9861F"
-  gold-tint: "#F6E2A8"
-  kingfisher: "#5DB8E3"
-  silt: "#A8916F"
-  ember: "#F07A63"
-  shallow: "#12261A"
-  deep: "#0B1A12"
-  ink-deep: "#06100A"
-  pool: "#07120C"
-  stone: "#1C3326"
-  gravel: "#5E6B60"
-  mist: "#F2EFE6"
-  mist-2: "#B9C4B4"
-  slip: "#ECE7D8"
-  ink: "#141C16"
-  ink-2: "#3D4A40"
-  slip-link: "#2D5C43"
+  ground: "#0B0D12"
+  shell: "#11141B"
+  raised: "#181C25"
+  line: "#262C38"
+  text: "#E8EAEE"
+  text-2: "#A3AAB7"
+  text-3: "#8A92A0"
+  paper: "#EEE9DD"
+  paper-ink: "#1A1C22"
+  paper-dim: "#4A4B4F"
+  highlight: "#D8F25B"
+  highlight-ink: "#1B2400"
+  pencil: "#8FB8FF"
+  withdrawn: "#FF6B5E"
+  partial: "#F2B84B"
+  ok: "#6FD39B"
 typography:
-  display:
-    fontFamily: "Bricolage Grotesque, system-ui, sans-serif"
-    fontSize: "clamp(2.75rem, 5vw, 4.5rem)"
-    fontWeight: 800
-    lineHeight: 0.95
-    letterSpacing: "-0.022em"
-    fontVariation: "'wdth' 86"
-  headline:
-    fontFamily: "Bricolage Grotesque, system-ui, sans-serif"
-    fontSize: "clamp(2rem, 4.2vw, 2.75rem)"
-    fontWeight: 750
-    lineHeight: 1.05
-    letterSpacing: "-0.02em"
-    fontVariation: "'wdth' 90"
-  title:
-    fontFamily: "Bricolage Grotesque, system-ui, sans-serif"
-    fontSize: "1.375rem"
-    fontWeight: 700
-    lineHeight: 1.05
-    letterSpacing: "-0.02em"
-  body:
-    fontFamily: "Bricolage Grotesque, system-ui, sans-serif"
-    fontSize: "1rem"
-    fontWeight: 400
-    lineHeight: 1.6
-  lede:
-    fontFamily: "Bricolage Grotesque, system-ui, sans-serif"
-    fontSize: "clamp(1.0625rem, 1.6vw, 1.3125rem)"
-    fontWeight: 400
-    lineHeight: 1.6
-  figure:
-    fontFamily: "Big Shoulders, Bricolage Grotesque, sans-serif"
-    fontSize: "clamp(4rem, 9vw, 8.5rem)"
-    fontWeight: 800
-    lineHeight: 1
-    letterSpacing: "-0.01em"
-    fontFeature: "'tnum'"
-  label:
-    fontFamily: "Big Shoulders, Bricolage Grotesque, sans-serif"
-    fontSize: "0.8125rem"
-    fontWeight: 700
-    lineHeight: 1.2
-    letterSpacing: "0.08em"
-  quote:
-    fontFamily: "Source Serif 4, Georgia, serif"
-    fontSize: "1rem"
-    fontWeight: 400
-    lineHeight: 1.6
-rounded:
-  stone: "34px 26px 38px 30px / 28px 36px 30px 40px"
-  stone-b: "26px 40px 30px 36px / 36px 28px 40px 30px"
-  stone-c: "40px 32px 26px 38px / 30px 40px 34px 28px"
-  nugget: "24px 30px 22px 32px / 22px 28px 24px 30px"
-  quartz: "22px 28px 20px 30px / 20px 26px 22px 28px"
-  pool: "18px 24px 16px 26px / 16px 22px 18px 24px"
-  pebble: "14px 18px 12px 20px / 12px 16px 14px 18px"
-  slip: "7px 4px 8px 5px / 5px 8px 4px 7px"
-spacing:
-  xs: "8px"
-  sm: "16px"
-  md: "24px"
-  lg: "32px"
-  xl: "48px"
-  reach: "72px"
-  section: "112px"
-components:
-  button-primary:
-    backgroundColor: "{colors.gold}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.nugget}"
-    padding: "0.8rem 1.45rem"
-  button-primary-sm:
-    backgroundColor: "{colors.gold}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.nugget}"
-    padding: "0.5rem 1rem"
-  button-secondary:
-    backgroundColor: "{colors.pool}"
-    textColor: "{colors.kingfisher}"
-    rounded: "{rounded.quartz}"
-    padding: "0.65rem 1.2rem"
-  input-pool:
-    backgroundColor: "{colors.pool}"
-    textColor: "{colors.mist}"
-    rounded: "{rounded.pool}"
-    padding: "0.85rem 1.1rem"
-  card-stone:
-    backgroundColor: "{colors.stone}"
-    textColor: "{colors.mist}"
-    rounded: "{rounded.stone}"
-    padding: "24px 26px"
-  card-slip:
-    backgroundColor: "{colors.slip}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.slip}"
-    padding: "24px 26px"
-  chip-flake:
-    backgroundColor: "{colors.gold}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.slip}"
-    padding: "0.05rem 0.45rem"
-  chip-pyrite:
-    backgroundColor: "{colors.silt}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.slip}"
-    padding: "0.1rem 0.5rem"
-  nav-pebble:
-    backgroundColor: "{colors.stone}"
-    textColor: "{colors.mist-2}"
-    rounded: "{rounded.pebble}"
-    padding: "5px 12px"
-  nav-pebble-active:
-    backgroundColor: "{colors.gold}"
-    textColor: "{colors.ink}"
+  display: "Hubot Sans Variable (wdth 75-125, wght 200-900)"
+  ui: "Mona Sans Variable (wdth 75-125, wght 200-900)"
+  data: "Martian Mono Variable (wdth 75-112.5)"
 ---
 
-# Design System: SiftBase
+# SiftBase desktop: design
 
-The public site in `web/` (Next.js): one long page and a 404. Product facts live in PRODUCT.md. This file records the Stream world as it shipped on 2026-11-06, read from `web/app/globals.css`, the components and the assets. It replaces the retired Gold Pan document; nothing from the pan, the gravel chips or the Three.js scene ships any more.
+This replaces the old `web/` site design completely. Nothing from the Gold Pan or stream scenes carries over: no teal, no gold, no river, no bird.
 
-## Overview
+## 1. Concept
 
-**Creative North Star: "The Stream of Ten Pools"**
+**A night sorting table.** Your whole collection lies on a dark table as stacks of paper, one stack per document. Ask a question and pages fly out of the stacks one at a time, get looked at, and either fall back or get a highlighter stroke and join a neat pile. The answer is written from that pile, and every line points back to a page you can pull up and read.
 
-**Concept:** One real question runs down a rainforest stream of ten pools below a waterfall; each pool is one pipeline step and keeps less, and only the gold that holds is picked.
+The app opens on **Home**, a full-window landing page with no sidebar. Its opening shows how pages get onto the table: a page slides in from the left edge, a scan line passes down it and boxes every heading, paragraph, table and chart it finds, its passages lift off, and the page is filed onto the index pile, while the right half lists the indexer's seven real steps as they happen to that page. Scrolling down plays the rest of the story on the same 3D table, one section per stage, from stacks to cited answer. Buttons in Home's header open the workspace, and only then does the sidebar appear.
 
-**Adjectives:** alive, patient, exacting, glinting, honest.
+Adjectives: **exact, calm, physical, candid, quick.**
 
-The page opens on a living photograph. Three photographs (the falls over terraced rock pools, one pool close up with silt and gold, a kingfisher lifting a gold nugget) are drawn in raw WebGL2 with depth parallax, pouring and rippling water, drifting mist, light shafts and gold glints. Scrolling dollies the camera down the pools through the ten trace steps, dives into a pool, and rises to the kingfisher. Every count on screen comes from the real index or one recorded run.
+The world lends the app four things only: the palette (night table, paper stock, highlighter), type (a variable grotesque that can go wide or narrow), density (a working desktop tool, not a poster) and one signature move (the Sift replay you can scrub). Navigation, buttons, inputs, tables and menus stay standard desktop controls.
 
-Below the story the page sits on deep moss. Nothing there is a plain box: text rests on wet slate stones, source text on wet field slips, actions and citations are gold nuggets and flakes, links are kingfisher blue, and slow waterlines replace dividers. Gold is reserved for evidence and for the actions that lead to it.
+### It works for any collection
 
-The site refuses the dev-tool default (black hero, gradient blob, three feature cards), the RAG-demo default (small grey citation numbers), and a static page: the scene moves like footage.
+The table is drawn from the collection's real numbers, never from the training set.
 
-**Key Characteristics:**
-- A pinned, scroll-scrubbed, reversible photographic scene carries the pipeline story.
-- Deep moss ground, one bright accent (gold) that always means evidence or action.
-- Every surface is a river material with irregular elliptical corners; no borders anywhere.
-- Real numbers, rolled on odometers and counters, never invented.
-- Every effect has a still fallback that keeps all content.
+| Collection | Table layout | Stack height | Labels |
+|---|---|---|---|
+| 1-12 documents | one arc of stacks | log scale against the collection's largest document, with a visible minimum | every stack labelled |
+| 13-80 documents | 2-4 arcs, largest at the back | same | labels on hover, on routed stacks and in the side list |
+| 81+ documents | dense grid of short stacks (tiles), camera higher | same, compressed | hover and search only; the list view is the main way in |
 
-## Colors
+- Sheets drawn in flight are capped (candidates 240, picked pages 24, passages 120, kept 40, cited 24). Exact counts always show as numbers, with a "+1,412 more" chip when the cap cuts in.
+- Long file names are cut in the middle (`Integrated Annual R…2025-26.pdf`) with the full name in the tooltip and the list.
+- Edge cases each have a state: an empty collection, a single document, a one-page document, a document still indexing, a query that found nothing.
 
-A dark rainforest palette: moss and slate for the ground, mist for text, gold as the single earned accent, kingfisher blue for links, silt and ember held back for withdrawn claims and failures. Ratios below are measured against the flat token colours (WCAG 2.x formula).
+## 2. References
 
-### Primary
-- **Picked Gold** (gold): primary actions (nugget buttons), citation flakes, the active gauge tick and pebble, the focus ring, the selection highlight, the caret and gold words in the headline. 9.3:1 on deep, 7.0:1 on stone; ink on gold 9.0:1.
-- **Sunlit Gold** (gold-hi): the bright edge of the gold sheen, figures in the stream and console (odometer label, beat counts, waiting clock), footer column headings and warning hints. 12.3:1 on deep; ink on it 11.9:1.
-- **Shadowed Gold** (gold-lo): the dark end of the sheen gradient only. Ink on it 5.4:1, the lowest stop any text sits on.
-- **Gold Wash** (gold-tint): the highlight behind quoted source text on slips. Ink on it 13.6:1.
-
-### Secondary
-- **Kingfisher Blue** (kingfisher): every link on moss and stone, and the secondary (quartz) button text and rim. 8.1:1 on deep, 6.1:1 on flat stone, 8.6:1 on pool.
-
-### Tertiary
-- **River Silt** (silt): the pyrite chip that marks a withdrawn claim. Decoration; the word "Withdrawn" carries the meaning. Ink on it 5.8:1.
-- **Ember** (ember): real failures only, as the title of an error pool and its 1px inner ring at 60%. 7.0:1 on pool.
-
-### Neutral
-- **Shallow Moss** (shallow): the top of the page gradient.
-- **Deep Moss** (deep): the page ground through the middle, the browser theme colour, the scrollbar track.
-- **Forest Floor** (ink-deep): the bottom of the page gradient and the solid backing of the top bar and the mobile section row.
-- **Still Pool** (pool): recessed surfaces: inputs, the secondary button, example chips, the waiting panel, error pools, nested panels inside the console, the trace output.
-- **Wet Slate** (stone): the river stones (answer, beats, assay, console, notices, trace panel), under the riverbed texture.
-- **Gravel** (gravel): decoration only (the ring of a cited-but-unreturned flake). 2.4 to 3.5:1, never text.
-- **Mist** (mist): primary text. 15.6:1 on deep, 11.8:1 on flat stone.
-- **Damp Mist** (mist-2): secondary text, ledes, labels, hints. 9.9:1 on deep, 7.5:1 on flat stone.
-- **Field Slip** (slip): wet field slips for source passages and assay results.
-- **Slip Ink** (ink): text on slips and on gold. 14.1:1 on slip.
-- **Faded Ink** (ink-2): secondary text on slips. 7.5:1.
-- **Slip Green** (slip-link): document names and the "not met" stamp on slips. 6.2:1.
-
-### Named Rules
-**The Earned Gold Rule.** Gold appears only on verified evidence, on the actions that lead to it, and on the current position (gauge tick, pebble). Never on decoration that means nothing.
-
-**The Pool For Errors Rule.** Error notices are always a still pool with an ember title and ring. Ember text never sits on the textured stone.
-
-**The Gravel Is Not Text Rule.** Gravel never carries words; at 2.4 to 3.5:1 it fails AA.
-
-## Typography
-
-**Display Font:** Bricolage Grotesque (variable, wdth and opsz axes), with system-ui
-**Body Font:** Bricolage Grotesque, with system-ui
-**Figures and Labels Font:** Big Shoulders (700 and 800), with Bricolage Grotesque
-**Quote Font:** Source Serif 4, with Georgia
-**Code:** the system monospace stack (ui-monospace, Cascadia Mono, Consolas)
-
-All three faces are Google Fonts loaded through `next/font`. **Character:** a warm, slightly condensed grotesque that narrows its width axis as it grows, tall condensed figures for every number, and a book serif only where the page quotes a source.
-
-### Hierarchy
-- **Display** (800, clamp(2.75rem, 5vw, 4.5rem), 0.95, wdth 86%): the cover headline only. "Only the *gold*" sets its key word in gold.
-- **Beat title** (780, clamp(2.25rem, 4.6vw, 4.25rem), 0.98, -0.03em, wdth 84%): the pinned caption title in the stream.
-- **Headline** (750, clamp(2rem, 4.2vw, 2.75rem), 1.05, wdth 90%): section headings.
-- **Title** (700, 1.375rem to 1.75rem): beat headings in the still layout, the question above an answer.
-- **Body** (400, 1rem, 1.6): running text, max 72ch in answers and 75ch in notes.
-- **Lede** (400, clamp(1.0625rem, 1.6vw, 1.3125rem)): under section headings, max 62ch (40ch on the cover).
-- **Figure** (Big Shoulders 800, tabular): the odometer (clamp(4rem, 9vw, 8.5rem); clamp(3.25rem, 14vw, 5rem) under 1024px), assay purity (clamp(3.25rem, 5vw, 4.5rem)), the waiting clock (2.75rem), beat numbers (2.5rem).
-- **Label** (Big Shoulders 700, 0.75 to 0.9375rem, 0.08 to 0.1em tracking, uppercase): small headings that name a group (footer columns, "The trace, step by step"), page numbers on slips, the odometer unit, the marquee.
-- **Quote** (Source Serif 4 400, 1rem, 1.6): source passages on slips.
-
-### Text technique per section
-- **Cover:** each headline line rises out of a mask (900ms, second line 120ms later).
-- **Stream:** the beat title decodes with GSAP ScrambleText (0.6s) on every beat change; the supporting line settles in from a 6px blur; the count rolls on an odometer; a ten-pebble rail marks the step.
-- **The answer:** highlight as you read: each cited claim gets a gold underline drawn by a scroll-linked view timeline.
-- **The assay:** purity counts up once on entry; the fanned slips straighten as they scroll in; the "Target 80% · not met" stamp lands.
-- **Ask:** a gold ripple runs once round the question field on focus; a running clock while a query waits.
-- **Footer:** a marquee of the stack drifts sideways.
-
-### Named Rules
-**The Numbers In Big Shoulders Rule.** Every figure is Big Shoulders with tabular numerals. Words stay in Bricolage.
-
-**The Serif Means Source Rule.** Source Serif 4 appears only on quoted source text.
-
-## Layout
-
-A single column of full-bleed chapters. Content sits in a centred wrap (`min(1200px, 100% - 48px)`). The cover is 100svh with copy on the left moss slope (max 600px) and the falls right of it. The stream track is 1100svh tall when the scene runs; a sticky 100svh pin holds the caption (left, 22svh from the top) and the odometer with its rail (left, 8svh from the bottom). Sections below use 112px top and 48px bottom padding, a 48px gap under each heading block, and a waterline 72px above content.
-
-Spacing steps observed: 8, 16, 24, 32, 48, 72 and 112px. Fixed chrome: a top bar (wordmark, Source, Ask) and a section gauge on the right edge from 1024px; below 1024px a scrollable row of pebble links under the bar.
-
-**Breakpoints:** 520px (Source link and "a question" appear), 768px (the caption shade switches from a left-side wash to a full-width vertical wash), 1024px (gauge replaces pebble row; answer and sources go to a 1.5fr / 1fr grid with sticky sources; caption moves from 15svh to 22svh).
-
-**Wireframes:**
-- **Cover:** living photo of the falls full bleed; left: two-line display headline, lede, question field with "Pan it" nugget, hint; bottom left: a falling gold scroll cue.
-- **Stream:** pinned. Caption top left, odometer and pebble rail bottom left, water and photo behind. Eleven beats: the falls, then the ten trace steps.
-- **The answer:** stone with the recorded answer and gold flakes (left), source pebbles and a wet slip with the cited passage (right), then run meta and the gaps the answer reported.
-- **The assay:** one wide stone with five fanned slips (one per run), then two short paragraphs on variance.
-- **Ask:** one large stone with the question pool, example chips, and the answer, waiting, notice or error state.
-- **Source (footer):** the riverbed: marquee, heading, three columns (Code, Stack, Checks), credit line.
-- **404:** the pool photo dimmed full bleed, one stone with "This page washed downstream." and a nugget back to the falls.
-
-## Elevation & Depth
-
-Depth comes from the photographs and from wet material, not from a shadow scale. Raised things (stones, slips, nuggets) carry a soft drop toward the water; recessed things (pools, inputs) carry inner shade. Stones nested inside the console stone become pools, so a stone never sits on a stone.
-
-### Shadow Vocabulary
-- **Drop** (`box-shadow: 0 18px 40px -18px rgb(2 8 4 / 0.75)`): under every river stone and the still-layout photographs.
-- **Wet** (`inset 0 2px 0 rgb(242 239 230 / 0.24), inset 0 0 0 1px rgb(242 239 230 / 0.06), inset 0 18px 30px -18px rgb(242 239 230 / 0.12), inset 0 -18px 28px -16px rgb(2 10 5 / 0.65)`): a bright film on the top lip and a shadowed underside; on stones, pebbles and stepping stones.
-- **Slip lift** (`0 14px 30px -16px rgb(2 8 4 / 0.8), inset 0 -2px 0 rgb(20 28 22 / 0.06)`): wet field slips.
-- **Nugget** (`inset 0 1px 0 rgb(255 255 255 / 0.45), 0 12px 24px -12px rgb(2 8 4 / 0.85)`): gold buttons.
-- **Recess** (`inset 0 3px 8px rgb(0 0 0 / 0.5), inset 0 -1px 0 rgb(242 239 230 / 0.06)`): the question pool; lighter variants on chips and the waiting panel.
-
-### Named Rules
-**The Wet Not Lifted Rule.** Every raised surface is wet slate or wet paper: a lit top lip and a dark underside. There is no generic card shadow.
-
-**The No Stone On Stone Rule.** Inside a stone, panels are pools cut into it.
-
-## Shapes
-
-No border and no uniform radius anywhere. Every surface uses an elliptical radius with four different corners, so each reads as a worn stone or torn paper. Stones come in three variants (stone, stone-b, stone-c) and neighbouring beats cycle through them. Slips use a tight 4 to 8px irregular radius and rest at a 1deg tilt. Indicator marks (gauge ticks, rail pebbles) are small uneven ovals. Dividers are a single 1.2px mist line at 12% drawn as a slow sine. The footer's top edge is one wide uneven curve. Iconography is limited to the wordmark: two wave strokes and a gold dot drawn in inline SVG.
-
-### Named Rules
-**The Nothing Is A Box Rule.** Use one of the recorded irregular radii; never a plain border or a single-value radius.
-
-## Components
-
-### Buttons
-- **Gold nugget (primary):** the sheen gradient (`160deg, gold-hi, gold 46%, gold-lo`) with ink text, 700 weight. Hover: a band of light sweeps across once (600ms). Pressed: sinks 1px and darkens to 90%. Busy: `aria-disabled` desaturates and shows a progress cursor. A small variant sits in the top bar.
-- **Quartz (secondary):** a still pool with kingfisher text, underlined, and a 1px kingfisher inner rim at 50% that goes full on hover. Used for Cancel and "See the recorded answer".
-- **Example chips:** pool fill with mist text; hover turns the text gold-hi and adds a faint gold rim.
-
-### Chips
-- **Gold flake (citation):** a small sheen chip reading "p12" after each claim. Hover scales to 1.08; the active one scales to 1.1 with a pool gap and a gold-hi ring, so the state is never colour alone. A page cited without a returned passage is a bare flake: no fill, mist-2 text, gravel ring.
-- **Pyrite:** silt chip, uppercase "Withdrawn", beside struck-through text.
-
-### Cards / Containers
-- **River stone:** stone fill under the Poly Haven riverbed texture: 95% solid where text sits, thinning to 48% at the rim. Wet plus drop shadow. Internal padding 24 to 48px by size.
-- **Wet field slip:** slip fill, ink text, caustic light sliding across at 4% (22s loop), 1deg tilt. Source slips slide in from the left (420ms).
-- **Notices:** capacity and rate-limit notices are stones with a gold inner rim at 40%; errors are pools with an ember ring.
-
-### Inputs / Fields
-- **Question pool:** recessed pool, mist text, gold caret, placeholder in mist-2. Focus: a gold ring ripples out once (700ms), then the steady 2px gold focus outline remains.
-
-### Navigation
-- **Top bar:** fixed, solid forest floor behind its text fading to clear. Wordmark, a "Source" link in mist (not kingfisher), and a small gold nugget "Ask".
-- **Depth gauge (from 1024px):** a column of ovals on the right edge; hover or focus widens the oval and slides its label in; the current section's oval is gold and wider.
-- **Pebble row (under 1024px):** small stones under the bar; the current one turns gold with ink text.
-
-### Stream caption and odometer (signature)
-The pinned caption (scrambled beat title, step name in code, settling line), the odometer whose digit strips roll 900ms to each real count, and a ten-pebble rail: passed pebbles pale, the current one gold and wider.
-
-### Stepping stones (trace tabs)
-Ten small stones across a thin waterline. Arrow keys, Home and End move between them. The selected stone lifts 2px with a gold inner rim; the panel below shows the step's description and its JSON output in a pool.
-
-## Do's and Don'ts
-
-### Do:
-- **Do** reserve gold for evidence, primary actions and the current position.
-- **Do** put text over the photographs only on the moss-slope side or the bottom edge, under the shade gradient, never in the middle of the frame.
-- **Do** use Big Shoulders with tabular numerals for every figure, and show the real number from the index or the recorded run.
-- **Do** build every new surface from the river materials: stone, slip, pool, nugget, flake, waterline.
-- **Do** give every motion a still state: under reduced motion all animations and transitions stop and the content stays.
-- **Do** use the one easing (`cubic-bezier(0.2, 0, 0, 1)`) and 160ms for state changes.
-
-### Don't:
-- **Don't** add borders, single-value radii or flat grey fills.
-- **Don't** set citations as small grey numbers; citations are gold flakes that open their source.
-- **Don't** put ember text on stone or use gravel for text.
-- **Don't** put a stone inside a stone; nest pools instead.
-- **Don't** add a gradient blob hero, three identical feature cards or glassmorphism.
-
-## References
-
-| Reference | What was borrowed |
+| Reference | What we take |
 |---|---|
-| [Monogrid on Awwwards](https://www.awwwards.com/inspiration/3d-webgl-scroll-monogrid-com) | Scroll-scrubbed camera moves with text passing over the canvas: the pinned stream. |
-| [Yale Law Journal](https://www.yalelawjournal.org) | Notes that open beside the text: a gold flake brings its source page up beside the claim. |
-| [21st: Source Citation Rail](https://21st.dev/@rmahammad/components/source-citation-rail) | The citation interaction: marker and source in sync, arrow keys rove the sources, active state not by colour alone. |
-| [Perplexity](https://www.perplexity.ai) | Anti-reference: the category's small grey citation numbers. |
-| [Poly Haven: Ganges River Pebbles](https://polyhaven.com/a/ganges_river_pebbles) | The riverbed texture on every stone and the footer (CC0). |
-| [Depth Anything V2](https://github.com/DepthAnything/Depth-Anything-V2) | The Small model (Apache-2.0), run locally, made the three depth maps. |
-| [Google Stitch](https://stitch.withgoogle.com) | Generated the three photographs on 2026-11-06. |
+| [Igloo Inc](https://www.igloo.inc/) (Awwwards Site of the Year 2024, [case study](https://www.awwwards.com/igloo-inc-case-study.html)) | One continuous 3D scene whose camera moves between states instead of cutting between pages. Library to Ask is a camera move across the same table. |
+| [Lusion](https://lusion.co/) (Site of the Year 2023) | Objects with weight: sheets accelerate, overshoot a little and settle. No floaty fades. |
+| [Linear](https://linear.app/) | Desktop shell density: slim rail, quiet chrome, ⌘K for everything, keyboard first. |
+| [Raycast](https://www.raycast.com/) | The question box as the main control, always one key away. |
+| [Readwise Reader](https://readwise.io/read) | Highlighter marks on real document text, which is how kept evidence reads in the page reader. |
+| [Langfuse](https://langfuse.com/) trace view | Steps as a timed waterfall. Our timeline shows the ten real trace steps with their measured durations. |
+| [Agent Trace on 21st.dev](https://21st.dev/@n1m4mz/components/agent-trace) | A replay playhead you drag to scrub a run. We build our own from that idea and drive the 3D scene with it. |
 
-## Motion and Scroll Story
+## 3. Colour system
 
-**Libraries:** GSAP 3.15.1 with ScrollTrigger (scroll progress, cover progress, the fade-out past the stream) and ScrambleTextPlugin (beat titles), via @gsap/react 2.1.2; Lenis 1.3.27 for smooth scroll (lerp 0.11) driven by the GSAP ticker; raw WebGL2 for the scene (no Three.js); CSS keyframes and scroll-driven view timelines for everything else.
+The scene is someone at a desk at night with one cool overhead light: dark room, bright paper. That scene sets the dark theme. The only saturated colour is highlighter, and it means one thing: this was kept as evidence.
 
-**Page load:** the falls photo paints with the page (fetch priority high). An inline script decides before first paint whether the scene can run. The scene loads when the browser is idle and fades in over the photo (900ms) after its first frame. The headline lines rise.
+| Token | Hex | Job |
+|---|---|---|
+| `ground` | #0B0D12 | The table and the window background |
+| `shell` | #11141B | Rail, top bar, drawers |
+| `raised` | #181C25 | Inputs, menus, hovered rows |
+| `line` | #262C38 | 1 px dividers and input borders |
+| `text` | #E8EAEE | Main text |
+| `text-2` | #A3AAB7 | Secondary text |
+| `text-3` | #8A92A0 | Meta text such as timings and counts |
+| `paper` | #EEE9DD | Paper stock: 3D sheets, the answer page, the page reader |
+| `paper-ink` | #1A1C22 | Text on paper |
+| `paper-dim` | #4A4B4F | Pages and stacks ruled out of a query |
+| `highlight` | #D8F25B | Kept evidence, the citation underline, focus rings, the primary button |
+| `highlight-ink` | #1B2400 | Text on highlight |
+| `pencil` | #8FB8FF | Work in progress: a query running, models online, the playhead |
+| `withdrawn` | #FF6B5E | A claim struck out, errors, models offline |
+| `partial` | #F2B84B | Coverage gaps ("not fully supported"), capacity warnings |
+| `ok` | #6FD39B | A finished step, an index gone live |
 
-**Scroll story (eleven equal beats over the track):**
-- Beats 0 to 3, the falls: the camera dollies from 1.04x to 2.3x into the pools with depth push; mist and light shafts drift; the falls pour.
-- Dive (7% of the track, centred on beat 4): a circular ripple crosses the screen and the view sinks into the pool.
-- Beats 4 to 8, the pool: silt flows over the stone lip along the pool's flow direction while the gold stays and glints; zoom 1.06x to 1.45x.
-- Rise (centred on beat 9): a horizontal ripple and the view rises to the kingfisher.
-- Beats 9 to 10, the kingfisher: mostly zoom (1.04x to 1.32x) with a fifth of the sway and push, because strong parallax tears the wing edges.
-- Past the stream the water fades out over the next 65% of a viewport and stops rendering.
+Rules: highlighter is never decoration; state colours appear only where they carry meaning; no gradients, no glow halos, no glass. Text selection is highlighter on highlight-ink, the caret is pencil, scrollbars are thin `line` on `shell`. Contrast ratios for every text pair are listed in section 10.
 
-**Signature moment:** the reversible pinned stream with pointer sway (the camera glides toward the pointer at 2.5% of the frame), the ripple dive and rise, the odometer and the ten-pebble rail with the recorded run's real counts.
+## 4. Typography
 
-**Hover and state:** 160ms for colour, lift and scale; 600ms nugget sheen; 420ms slip slide; 900ms headline rise, odometer roll and scene fade; 520ms beat-line settle. Ambient loops: caustic light 22s (slips) and 12s (waiting panel), waterlines 40s, marquee 48s, scroll cue 1.8s. One easing everywhere: `cubic-bezier(0.2, 0, 0, 1)`. The shader smooths scroll with the same glide at any frame rate.
+All three faces ship inside the app as woff2 files from Fontsource (SIL Open Font License). Mona Sans and Hubot Sans are GitHub's open type family; Martian Mono is Evil Martians' open mono. All three have a width axis, which the app uses instead of extra font files.
 
-## 3D and Visual Elements
+- **Hubot Sans** for display and numbers: collection names, counters, step names. Big counts are set wide (wdth 118-120, wght 760) and step names narrower (wdth 88-92, wght 650), so the funnel reads at a glance.
+- **Mona Sans** for all UI and reading text.
+- **Martian Mono** (wdth 87.5) only for data: page references (`p113`), file names, timings, keys.
 
-- **The stream scene:** one full-screen fragment shader over three 1376x768 photographs. Each photo has a depth map (parallax, three refinement steps) and a water mask (R still water that ripples, G falling water that pours along a direction, B gold that tints and glints). Mist, light shafts, a vignette and a value-noise texture are computed in the shader. The canvas is capped near 1.2 million pixels.
-- **Still photographs:** the same three WebP photos, shown in the cover, in the still stream layout and (dimmed) on the 404.
-- **Textures:** the riverbed WebP on stones and the footer; a generated 256px caustic tile on slips and the waiting panel.
-- **Icons:** none beyond the inline SVG wordmark.
-- **Provenance:** every shipping raster is listed with source and licence in `web/public/assets/SOURCES.md` and is rebuilt by `scripts/prepare_assets.py`. Assets total 897 KB.
+| Role | Face | Size / line | Weight |
+|---|---|---|---|
+| Collection name on Home | Hubot Sans wdth 118 | 44/44 | 760 |
+| Counter (documents → routed → pages → kept → cited) | Hubot Sans wdth 120 | 40/40 | 760 |
+| Screen title | Hubot Sans wdth 108 | 20-28 | 700-760 |
+| Step label | Hubot Sans wdth 88 | 13/16 | 650 |
+| Answer body | Mona Sans | 15/24, 68ch max | 430 |
+| UI default | Mona Sans | 13.5/19 | 450 |
+| Small UI | Mona Sans | 12/16 | 550 |
+| Data | Martian Mono wdth 87.5 | 10.5-11.5/16, tabular | 450-500 |
 
-## Experience
+Text techniques, one per place:
 
-- **Main flow:** read the cover, scroll the stream, read the recorded answer and pick its citations, read the assay, then ask. A question typed on the cover is checked (8 characters or more), the page scrolls to the console and the console runs it.
-- **Waiting:** a still pool with caustic light, a running clock, the expected wait (about a minute to wake the server, then 40 seconds to 3 minutes) and a Cancel button. A polite live region announces the state.
-- **Done:** focus moves to the result: the answer with gold flakes and source slips, status, server time, passages checked, gaps reported, and the ten-step trace as stepping stones.
-- **Expected limits:** daily allowance used up (gold-rimmed stone, the time it frees up, link to the recorded answer); too many questions (gold-rimmed stone with the time); API not connected yet (gold-rimmed stone).
-- **Error:** an ember-ringed pool with the HTTP status, the message and a gold "Try again".
-- **Empty:** a slip explains when an answer cites no page or a cited passage was not returned.
-- **404:** "This page washed downstream." with a nugget back to the falls.
+- **Numbers that move:** stage counters roll as odometer digits when the replay passes them.
+- **Highlight as you read:** in the page reader, the kept passage gets a highlighter stroke swept left to right (a clip-path reveal) when the page opens.
+- **Struck in red pencil:** a withdrawn claim gets a hand-drawn strike line, then dims.
+- **Typewriter:** answer lines appear line by line during the answer step of a replay, then stay as plain text.
 
-## Quality Bar
+All of it ends as real, selectable text. Under reduced motion it is simply there.
 
-- **Measured performance:** 145 fps at 1440x900 in the user's browser; under 1 ms of GPU time per frame on an RTX 3050. Assets 897 KB in total; the first-viewport photo (falls.webp) is 287 KB.
-- **Fallbacks:** the scene gives way to the still photographs under `prefers-reduced-motion`, without WebGL2, on software-only GL (`failIfMajorPerformanceCaveat`), after 10 s of visible time without a first frame, on context loss, and when the governor sees three 2 s windows in a row under 24 fps (first at half resolution, then off). On fallback the reader is kept on the beat they were reading.
-- **Accessibility:** skip link to the question box; semantic sections with labelled headings; the pinned caption is `aria-hidden` and the beats exist as real list items; roving keyboard focus in sources and trace tabs; a 2px gold focus ring at 2px offset; AA contrast for all text tokens (see Colors); descriptive alt text on the still photos; counters show the real value under reduced motion; Lenis is off under reduced motion.
-- **Responsive:** from 360px phones to wide screens; the bar, section navigation, caption position, odometer size and photo shade each change at the breakpoints in Layout.
+## 5. Layout
+
+Window: default 1440×900, minimum 1100×700. Spacing scale (px): 4, 8, 12, 16, 24, 32, 48, 64. Corner radius: 8-9 for controls, 12 for rail items, 14 for floating panels, 4-6 for paper. A frameless window with our own 40 px title bar (Windows caption buttons through Electron's title bar overlay).
+
+**Floating panels.** On the three screens with the 3D scene (Home, Ask, Library), every panel floats 12 px in from the edges over the scene: translucent `shell` (84%) with an 18 px background blur, a 1 px `line` border, a soft drop shadow and a faint top highlight. The blur is there so text stays readable over moving sheets, not as decoration. History and Settings are solid screens with no scene behind them.
+
+**Two modes.** Home is a landing page that fills the window under the title bar, with no sidebar. The workspace (Ask, Library, History, Settings) has the sidebar. "Open workspace" (or Ask this collection / Index a folder on the page) enters the workspace, and the rail slides in from the left. Clicking the SiftBase name in the title bar goes back to Home.
+
+**Workspace rail.** 80 px on the left: Ask, Library, History, Settings, each with icon and short label (Ctrl+1-4). The active item sits on a raised pill that slides to the new item when you switch. The rail's foot holds three status lines: local API (running / starting / stopped), models (online / offline / at capacity until a time) and the free model allowance left today.
+
+**Home** (what the app opens on). One page that scrolls, with the 3D scene fixed behind it.
+
+- Header (52 px, floating, stays pinned while scrolling): only the API and model status on the left and the primary "Open workspace" on the right. No collection picker and no screen links: Home always shows the most recently used collection, and choosing collections and screens happens in the workspace.
+- Opening (one screen tall). Left: waiting pages queue off the left edge; one page at a time slides to the centre, is scanned and filed onto the index pile in front of it. A caption top left says what it shows, and a "Scroll to see how a question is answered" hint sits bottom centre until you scroll. Right panel (46%, up to 620 px): the collection name, its status (live / indexing now, date indexed, a "real index" or "synthetic" tag), Ask this collection (primary) and Index a folder, four counts (documents, pages, passages, page vectors), then "Reading a page" with the current file and page, a one-line note, and the seven steps. Each step shows its real indexer name and number (`1/7 Reading pages` … `7/7 Saving the index`), a detail line for this page, and a state: waiting, running (spinner), done (check) or skipped (dimmed, for example "No charts on this page"). The vector step shows 48 small bars changing while it runs. While a real indexing job runs, the steps follow the job instead.
+- Story sections (each one screen tall), a floating card on the left with a short heading, one or two lines and two numbers that count up; the scene on the right plays that stage (section 6 has the table). The numbers come from the selected collection and its latest run, so the story works for any collection.
+- Closing: "Start with a question or a folder", with Open workspace and Index a folder.
+
+**Ask** (the main working screen)
+
+- Top bar (52 px, floating): collection picker (name, document count, page count) and the question field with Ask (Enter) and ⌘K.
+- Centre: the 3D table, full bleed behind everything.
+- Right drawer (440 px, floating, resizable 360-640): the answer on paper stock with citation chips, then "Not covered" (the API's limitations), then the sources grouped by document.
+- Bottom (104 px, floating): the run timeline. Ten segments sized by each step's real duration, each with its stage name and its count (documents routed, candidate pages, passages checked, kept, claims, pages cited). A playhead scrubs the replay.
+- Wide counters sit top left over the scene: documents → routed → pages → kept → cited.
+
+**Library**
+
+- Left list (320 px): collections with document and page counts and status (live, indexing 62%, failed). "Index a folder" button and drag-and-drop for a folder or ZIP.
+- Centre: the same 3D table showing the selected collection's stacks.
+- Right (360 px): the document list (name, pages, type), sortable and searchable. At 81+ documents this list is the main view.
+
+**History**
+
+- Table of past questions: question, collection, time, duration, documents used, claims kept / withdrawn, status. Newest first, searchable.
+- Right panel (480 px): the selected run's trace as a waterfall (ten steps, durations, counts, model used) with "Replay on the table" and "Open answer".
+
+**Settings**
+
+One 720 px column of grouped rows: model providers and keys (stored in the local `.env`, never shown back in full), the writer and judge models (free by default, or the user's own paid model if they added one), provider order, private mode, daily usage from the spend ledger, data folder.
+
+## 6. Motion and the Sift
+
+An app has no scroll story. Here the story is the run, and the user controls its playback.
+
+**The Sift (signature moment).** One GSAP timeline per answered query, built from the real response and scrubbed by the timeline's playhead. Each trace step is one act:
+
+| Step | On the table |
+|---|---|
+| query_planning | The question lands as a paper slip at the front of the table |
+| routing_guard | Routed stacks lift and stay bright; every other stack sinks and dims to `paper-dim` |
+| candidate_pages | Pages fly out of the routed stacks one by one into a loose cloud above the table |
+| page_survey | The picked pages come forward into a fan; the rest fly home to their stacks |
+| element_retrieval | Passages peel off the fanned pages as paper strips |
+| element_triage | Strips line up in a queue, best first |
+| element_verification | Each strip crosses a pencil-blue scan line: kept strips take a highlighter stroke and stack neatly; rejected strips drop and fade |
+| answer_generation | The answer page rises; the kept pile feeds into it; answer lines type into the drawer |
+| answer_verification | Claims tick; a withdrawn claim is struck in red pencil |
+| citation_render | Cited pages fly to a neat stack beside the answer, each with a tab (`report.pdf p113`) |
+
+Clicking a citation chip lifts that page off the cited stack into the page reader, with its passage highlighted.
+
+**Honest timing.** `/query` is blocking, so the app cannot show stages live while a query runs. While waiting, the table riffles: top sheets of every stack lift and drop at random, with an elapsed timer and the typical duration ("usually 35-40 s"). When the response arrives, the Sift replays the real run in about 12 s, and the timeline shows the real durations. Live stage events need a progress hook in `kb/query/pipeline.py` and a streaming route; that is a later backend task for whoever owns `kb/query`.
+
+**Home: reading a page (the opening moment).** One GSAP timeline per page, about 6.5 s, then the next page:
+
+| Time | Page on the left | Step on the right |
+|---|---|---|
+| 0-1.0 s | slides in from the queue off the left edge, turning to face you | waiting |
+| 1.0-3.2 s | a pencil-blue scan line passes top to bottom; each region it passes gets a box and a tag (Heading, Paragraph in pencil blue; Table, Chart in highlighter) | 1/7 Reading pages (text layer or OCR), then 2/7 charts (or skipped), 3/7 Checking every word |
+| 3.2-4.0 s | page holds | 4/7 Document summaries, 5/7 Page summaries |
+| 4.0-5.1 s | its passages lift off as paper strips (highlighter for tables and charts) and fly right, towards the panel | 6/7 Search vectors, bars moving |
+| 5.1-6.0 s | the page tips flat and drops onto the index pile, which grows | 7/7 Saving the index |
+
+The indexer really runs each step over all pages in turn, so Home labels this loop as an illustration of what each step does to one page. During a real indexing job it switches to the job's live step and page counts.
+
+**Home scroll story.** Lenis smooths the page scroll, and the scroll position (in screen heights) drives the scene directly, so scrolling back plays it backwards. The camera eases toward each section's view (about 7% of the gap per frame).
+
+| Section | Card | Scene |
+|---|---|---|
+| Opening | the seven indexing steps | the page-scanning loop |
+| 1 | Every document becomes a stack: documents, pages | the collection's stacks rise from the table |
+| 2 | Ask, and only the right documents move: documents routed, candidate pages | the Sift scrubs through plan, route, candidates and survey |
+| 3 | Every passage is checked: passages checked, kept (highlighter) | passages peel off, queue and cross the scan line; kept ones stack |
+| 4 | Answers cite the exact page: claims, pages cited | the answer page rises and the cited pages stack beside it |
+| 5 | Runs on your PC: three plain facts (local search, which calls go online and private mode, traces kept) | the camera pulls back over the whole table |
+
+In a real (non-prototype) build these numbers come from the collection's most recent run in History; a collection with no runs yet shows sections 1 and 5 only.
+
+**Indexing.** Dropping a folder flies its pages in one by one into new stacks that grow as pages are read. Progress comes from the indexer's progress callback (the seven `*_STEP` names in `kb/ingest/pipeline.py`), read by the Electron main process.
+
+**Smoothness.** Screen changes: the rail pill slides (550 ms, `expo.out`), the new screen's panels rise 12 px and fade in with a 50 ms stagger (600 ms, `expo.out`), and the camera glides to the new view (1.1 s, `expo.inOut`). Buttons lift 1 px on hover and press to 98%. Answer lines arrive with a short blur-to-sharp fade. The page reader rises and scales in. Lenis smooths every scrolling panel: the Home panel, the answer drawer, the document list, History and Settings.
+
+**Timing and easing.** Sheet flights: 700 ms, `power3.inOut`, staggered so they leave one at a time, one act capped at about 1.6 s. UI: 200-450 ms, `expo.out`. Hover on a stack: it lifts slightly and shows its label.
+
+**Libraries.** GSAP 3.15 (timelines, the scrubbed replay, odometer digits) with `@gsap/react`; Three.js 0.187 through React Three Fiber 9 and drei 10 (scene, instancing, camera); Lenis 1.3 (drawer and list scroll). Exact versions are pinned when the app is scaffolded.
+
+**Reduced motion.** The replay becomes a sequence of crossfaded still states, one per step, with no flights; counters show final numbers; the scrubber still steps through states.
+
+## 7. 3D and visual elements
+
+- **Scene:** one Three.js scene for the whole app. A matte dark table plane, one cool key light from above with soft shadows, a faint fill. No HDRI, no particles, no bloom.
+- **Stacks:** one box per document with a paper-edge texture (fine page lines drawn on a canvas at startup) and a top sheet. Height on a log scale against the collection's largest document.
+- **Sheets:** one instanced mesh of thin paper planes for every flying page, and one for passage strips. One draw call each.
+- **Answer page and cited stack:** paper planes with tabs; tab text is an HTML label pinned to the 3D position, so it stays sharp and readable by screen readers.
+- **Icons:** Lucide (ISC licence), 1.5 px stroke, 16 and 20 px.
+- **No stock imagery.** The only pictures are the document pages themselves; the page reader shows the real page text from the index.
+- **Performance:** device pixel ratio capped at 2; render on demand when the table is still; pause when the window is hidden; shadows off at 81+ documents.
+
+## 8. Components
+
+| Component | Source |
+|---|---|
+| Window, title bar, rail, status lines | custom |
+| Question field and ⌘K command menu | `cmdk` (MIT), restyled; reference: [command palette on 21st.dev](https://21st.dev/@vovalopuh13/components/command-palette) |
+| Collection picker, selects, tabs, tooltips, switches, dialogs | Radix UI primitives (MIT), restyled to these tokens |
+| Run timeline and scrubber | custom (idea from the 21st.dev Agent Trace) |
+| Trace waterfall (History) | custom |
+| Answer drawer, citation chips, "Not covered" list | custom |
+| Page reader with highlighted passage | custom |
+| Data tables (History, document list) | custom on a plain `<table>` with sortable headers |
+| Toasts (index done, capacity reached) | custom |
+| 3D table, stacks, sheets, replay | custom (Three.js / R3F / GSAP) |
+
+## 9. Experience
+
+**Flows**
+
+0. First-run setup (once per PC or user, before Home): a short "Connect your models" step. It asks for the API keys this user wants to use, starting with the free providers (Cloudflare Workers AI, Groq), each with a link to get a key and a "Test" button that makes one small call. An optional "Use your own paid models" section lets a user who has a paid account pick a stronger model for the writer (answers) and for the judge (scoring), entered as provider, model name and key. Free providers stay the default; paid models are used only when the user adds them. Keys are stored locally in `.env` (never shown back in full) and can be changed later in Settings.
+1. First launch: the app starts the local API (a "Starting SiftBase" state with the Python log one click away), finds collections and opens Home on the most recent one. With no collection, Home shows a single page waiting at the left edge and one action, "Index a folder". From Home's header, any button opens the workspace and the sidebar.
+2. Index: pick a folder or ZIP, name the collection, watch pages stack; when done it shows the document and page counts and "Ask this collection".
+3. Ask: type, Enter; the table riffles; the answer arrives and the Sift replays; read, click a citation, read the page.
+4. Review: History lists every run; open one to replay it or read its trace.
+
+**States**
+
+- API starting / failed to start (with the error and "Open log").
+- Models offline: the question field still works; sending shows "No internet: answers need the model service. The library and past answers still work."
+- At capacity (503 `AT_CAPACITY`): a notice in `partial` with the time it frees up, from `Retry-After`.
+- Rate limited (429): the same notice with the wait.
+- Query found nothing: the table shows the routed stacks with zero pages kept, and the drawer says what was searched.
+- Partial answer: "Not covered" lists each limitation the API returned.
+- Indexing failed: the collection shows the error code and "Retry".
+
+**Feedback:** every control has hover, pressed, focus and disabled states; focus rings are 2 px highlighter with a 2 px offset; long actions show elapsed time, never a bare spinner.
+
+## 10. Quality bar
+
+- Window sizes from 1100×700 to 2560×1440; drawers become overlays below 1280 px wide.
+- 60 fps on a mid-range laptop GPU with 400 sheets in flight; DOM animation on transforms and opacity only.
+- Cold start to a usable shell in under 2 s (the API may still be starting, and says so).
+- WCAG AA on every text pair: text on shell 15.3:1, text-2 on shell 7.9:1, text-3 on shell 5.9:1 (5.4:1 on raised), paper-ink on paper 14.1:1, highlight-ink on highlight 12.9:1, pencil 9.2:1, withdrawn 6.6:1, partial 10.3:1 and ok 10.1:1 on shell (checked with the WCAG formula).
+- Full keyboard use (Ctrl+1-4 for the rail, ⌘K, Enter to ask, arrow keys on the timeline) and visible focus everywhere.
+- Every fact the 3D table shows is also in text: counts in the counters, routed documents and cited pages in the sources list. The canvas is `aria-hidden` with a live text summary beside it.
+- `prefers-reduced-motion` keeps every state and drops the flights.
+- Electron security: `contextIsolation` on, `sandbox` on, `nodeIntegration` off, a strict Content Security Policy (`default-src 'self'`), a preload that exposes only the app's own calls, and the API key held in the main process only.
+- Fully offline package: fonts, libraries and icons bundled; nothing leaves the machine except the model calls the Python API makes.
+
+## Prototype
+
+A clickable prototype of this design is at `.impeccable/mocks/desktop/index.html` (local only, not committed). It plays one real recorded run on the 35-document training collection, plus two synthetic collections (labelled as such) to show the table at 4 and 240 documents. The training collection's counts on Home (35 documents, 6,970 pages, 68,769 passages) come from its real index; the page layouts in the Home loop are drawn for illustration.
