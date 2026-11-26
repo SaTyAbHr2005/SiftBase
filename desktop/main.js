@@ -9,6 +9,8 @@ const path = require('node:path');
 const { toRun } = require('./lib/run');
 
 const ROOT = path.resolve(__dirname, '..'); // the SiftBase repo: kb/, scripts/, .env
+// The env file the API loads, as kb/config.py reads it: KB_ENV_FILE, else the repo's .env.
+const ENV_FILE = process.env.KB_ENV_FILE || path.join(ROOT, '.env');
 const PYTHON = process.env.SIFTBASE_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
 const USER = () => app.getPath('userData');
 const file = (name) => path.join(USER(), name);
@@ -60,10 +62,10 @@ function keysForPage() {
   return { values: Object.fromEntries(FREE.map((n) => [n, mask(k.values[n])])), paid, allowShare: k.allowShare, fromEnv,
     ready: hasProvider({ ...Object.fromEntries(fromEnv.map((n) => [n, '1'])), ...k.values }), encryption: safeStorage.isEncryptionAvailable() };
 }
-// Names (never values) of free keys already set in the repo's .env, which the API also loads.
+// Names (never values) of free keys already set in the env file the API also loads.
 function envFileKeys() {
   try {
-    const set = fs.readFileSync(path.join(ROOT, '.env'), 'utf8').split(/\r?\n/)
+    const set = fs.readFileSync(ENV_FILE, 'utf8').split(/\r?\n/)
       .map((l) => l.match(/^\s*([A-Z_]+)\s*=\s*["']?(.+?)["']?\s*$/)).filter(Boolean).map((m) => m[1]);
     return FREE.filter((n) => set.includes(n) || process.env[n]);
   } catch { return FREE.filter((n) => process.env[n]); }
@@ -161,7 +163,7 @@ async function startApi() {
   api.key = crypto.randomBytes(24).toString('base64url');
   api.log = [];
   setApi('starting');
-  const proc = spawn(PYTHON, ['-m', 'scripts.serve', '--host', '127.0.0.1', '--port', String(api.port), '--env-file', path.join(ROOT, '.env')],
+  const proc = spawn(PYTHON, ['-m', 'scripts.serve', '--host', '127.0.0.1', '--port', String(api.port), '--env-file', ENV_FILE],
     { cwd: ROOT, env: { ...childEnv(), KB_API_KEYS: api.key }, windowsHide: true });
   api.proc = proc;
   const keep = (d) => { api.log.push(...String(d).split(/\r?\n/).filter(Boolean)); api.log = api.log.slice(-40); };
@@ -241,7 +243,7 @@ async function startIndex({ folder, collection }) {
   if (folder !== picked && (await dialog.showMessageBox(win, { type: 'question', buttons: ['Index', 'Cancel'], defaultId: 0, cancelId: 1, message: `Index ${folder} as ${collection}?` })).response !== 0) return { ok: false, message: 'Cancelled.' };
   if (indexing) return { ok: false, message: 'Another folder is being indexed.' };
   const proc = spawn(PYTHON, [path.join(ROOT, 'scripts', 'index_local.py'), '--src', folder, '--collection', collection],
-    { cwd: ROOT, env: { ...childEnv(), KB_ENV_FILE: path.join(ROOT, '.env') }, windowsHide: true });
+    { cwd: ROOT, env: { ...childEnv(), KB_ENV_FILE: ENV_FILE }, windowsHide: true });
   const job = (indexing = { proc, collection, tail: [] }); // output can arrive after exit: keep writing to this job
   let buf = '';
   // ProgressBar (kb/ingest/progress.py) prints "<step> [###---] 45% 100/220 | ..." every 5% when not on a terminal.
