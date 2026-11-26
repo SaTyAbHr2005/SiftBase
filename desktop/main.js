@@ -4,7 +4,6 @@ const { app, BrowserWindow, ipcMain, dialog, safeStorage, shell } = require('ele
 const { spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
-const net = require('node:net');
 const path = require('node:path');
 const { toRun } = require('./lib/run');
 
@@ -150,29 +149,33 @@ function childEnv() {
   if (settings().dataDir) env.KB_DATA_DIR = settings().dataDir;
   return env;
 }
-function freePort() {
-  return new Promise((resolve, reject) => {
-    const s = net.createServer().once('error', reject).listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => resolve(p)); });
-  });
-}
 function setApi(state, error = '') { api.state = state; api.error = error; send('api', { state, error }); }
 
 async function startApi() {
   stopApi();
-  api.port = await freePort();
+  // The API binds port 0 itself and prints the port it got, so no other program can take the port between our
+  // choosing it and Python binding it, and the key is only ever sent to our own child.
+  api.port = 0;
   api.key = crypto.randomBytes(24).toString('base64url');
   api.log = [];
   setApi('starting');
-  const proc = spawn(PYTHON, ['-m', 'scripts.serve', '--host', '127.0.0.1', '--port', String(api.port), '--env-file', ENV_FILE],
+  const proc = spawn(PYTHON, ['-m', 'scripts.serve', '--host', '127.0.0.1', '--port', '0', '--env-file', ENV_FILE],
     { cwd: ROOT, env: { ...childEnv(), KB_API_KEYS: api.key }, windowsHide: true });
   api.proc = proc;
-  const keep = (d) => { api.log.push(...String(d).split(/\r?\n/).filter(Boolean)); api.log = api.log.slice(-40); };
+  const keep = (d) => {
+    const lines = String(d).split(/\r?\n/).filter(Boolean);
+    for (const l of lines) {
+      const m = l.match(/Uvicorn running on http:\/\/127\.0\.0\.1:(\d+)/);
+      if (m && api.proc === proc) api.port = Number(m[1]);
+    }
+    api.log.push(...lines); api.log = api.log.slice(-40);
+  };
   proc.stdout.on('data', keep); proc.stderr.on('data', keep);
   proc.on('error', (e) => { if (api.proc === proc) setApi('failed', `Could not start Python (${PYTHON}): ${e.message}`); });
   proc.on('exit', (code) => { if (api.proc === proc) { api.proc = null; setApi('failed', `The local API stopped (exit ${code}). ${api.log.slice(-3).join(' ')}`); } });
   for (let i = 0; i < 180 && api.proc === proc; i++) {
     // Re-check after the await: a restart may have replaced this process while the request was in flight.
-    try { if ((await call('GET', '/collections', null, 3000)).status === 200 && api.proc === proc) return setApi('running'); } catch { /* not up yet */ }
+    try { if (api.port && (await call('GET', '/collections', null, 3000)).status === 200 && api.proc === proc) return setApi('running'); } catch { /* not up yet */ }
     await new Promise((r) => setTimeout(r, 500));
   }
   if (api.proc === proc) setApi('failed', 'The local API did not start within 90 s.');
