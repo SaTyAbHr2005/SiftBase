@@ -53,6 +53,16 @@ npm start
 
 The app starts the API on 127.0.0.1 with a new key each launch and stops it on quit. On first run it asks for your Cloudflare and Groq keys, or uses the ones already in `.env`, and saves them encrypted for your user account. If you pay for a stronger model, you can set it as the writer, the judge or both; the free models stay as the fallback. Set `SIFTBASE_PYTHON` if `python` on your PATH is not the environment with the requirements installed. `npm test` runs the app's tests.
 
+To build a Windows installer that needs nothing else on the PC:
+
+```bash
+cd desktop
+npm run build:backend
+npm run dist
+```
+
+`build:backend` runs on Windows with Python 3.10. It puts the official embeddable Python 3.10.11, the pinned packages, the SiftBase code and the local search models into `desktop/build/backend` (about 635 MB). `dist` writes `desktop/dist/SiftBase-Setup-0.1.0.exe` (about 430 MB). The installer is not code-signed, so Windows SmartScreen warns on first run. An installed app keeps its collections in its own app data folder, and Settings can point it at another one.
+
 ### Access and limits
 
 | Variable | Default | What it does |
