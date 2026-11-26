@@ -8,7 +8,7 @@ desktop (Electron on Windows first; macOS and Linux builds from the same code)
 
 ## Stack
 
-An Electron app in a new `desktop/` folder. The renderer is Vite + React + TypeScript with Three.js (React Three Fiber), GSAP and Lenis. The main process starts the local SiftBase API (`python -m scripts.serve` on 127.0.0.1, a free port and a fresh API key per launch) and stops it on quit. Every font, library, model and asset ships inside the app: no CDN, no hosted font, no remote script. The old `web/` site is retired and nothing from it is reused.
+An Electron app in a new `desktop/` folder. The renderer is plain ES modules with no build step (the approved prototype, ported as it is) using Three.js, GSAP and Lenis from `desktop/node_modules`; it reaches the API, keys and files only through the preload bridge. The main process starts the local SiftBase API (`python -m scripts.serve` on 127.0.0.1, a free port and a fresh API key per launch) and stops it on quit. Every font, library, model and asset ships inside the app: no CDN, no hosted font, no remote script. The old `web/` site is retired and nothing from it is reused.
 
 ## Users
 

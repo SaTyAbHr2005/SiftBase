@@ -41,6 +41,18 @@ To index from the command line:
 
 This CLI reads process environment variables, while the server launcher loads `.env`. The documents themselves stay outside the repository.
 
+### Desktop app
+
+`desktop/` holds an Electron app for using SiftBase on your own PC. You index a folder, ask it questions and see which documents and pages each answer used. It needs Node 22 or later and the Python setup above.
+
+```bash
+cd desktop
+npm install
+npm start
+```
+
+The app starts the API on 127.0.0.1 with a new key each launch and stops it on quit. On first run it asks for your Cloudflare and Groq keys, or uses the ones already in `.env`, and saves them encrypted for your user account. If you pay for a stronger model, you can set it as the writer, the judge or both; the free models stay as the fallback. Set `SIFTBASE_PYTHON` if `python` on your PATH is not the environment with the requirements installed. `npm test` runs the app's tests.
+
 ### Access and limits
 
 | Variable | Default | What it does |

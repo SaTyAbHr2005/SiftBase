@@ -212,7 +212,7 @@ In a real (non-prototype) build these numbers come from the collection's most re
 
 **Timing and easing.** Sheet flights: 700 ms, `power3.inOut`, staggered so they leave one at a time, one act capped at about 1.6 s. UI: 200-450 ms, `expo.out`. Hover on a stack: it lifts slightly and shows its label.
 
-**Libraries.** GSAP 3.15 (timelines, the scrubbed replay, odometer digits) with `@gsap/react`; Three.js 0.187 through React Three Fiber 9 and drei 10 (scene, instancing, camera); Lenis 1.3 (drawer and list scroll). Exact versions are pinned when the app is scaffolded.
+**Libraries.** GSAP 3.15.1 (timelines, the scrubbed replay, odometer digits); Three.js 0.187.0 used directly (scene, instancing, camera); Lenis 1.3.27 (Home, drawer and list scroll). Pinned in `desktop/package.json`. The renderer is the approved prototype ported as plain ES modules, with no React layer or build step.
 
 **Reduced motion.** The replay becomes a sequence of crossfaded still states, one per step, with no flights; counters show final numbers; the scrubber still steps through states.
 
@@ -231,15 +231,15 @@ In a real (non-prototype) build these numbers come from the collection's most re
 | Component | Source |
 |---|---|
 | Window, title bar, rail, status lines | custom |
-| Question field and ⌘K command menu | `cmdk` (MIT), restyled; reference: [command palette on 21st.dev](https://21st.dev/@vovalopuh13/components/command-palette) |
-| Collection picker, selects, tabs, tooltips, switches, dialogs | Radix UI primitives (MIT), restyled to these tokens |
+| Question field (Ctrl K focuses it) | custom |
+| Collection picker, selects, dialogs (reader, "Connect your models") | native `<select>`, `<dialog>`-style overlays and form fields, restyled to these tokens |
 | Run timeline and scrubber | custom (idea from the 21st.dev Agent Trace) |
 | Trace waterfall (History) | custom |
 | Answer drawer, citation chips, "Not covered" list | custom |
 | Page reader with highlighted passage | custom |
 | Data tables (History, document list) | custom on a plain `<table>` with sortable headers |
 | Toasts (index done, capacity reached) | custom |
-| 3D table, stacks, sheets, replay | custom (Three.js / R3F / GSAP) |
+| 3D table, stacks, sheets, replay | custom (Three.js / GSAP) |
 
 ## 9. Experience
 
