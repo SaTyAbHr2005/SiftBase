@@ -279,6 +279,7 @@ async function startIndex({ folder, collection }) {
 function createWindow() {
   win = new BrowserWindow({
     width: 1440, height: 900, minWidth: 1100, minHeight: 700, backgroundColor: '#0B0D12', show: false,
+    icon: path.join(__dirname, 'resources', 'icon.png'),
     titleBarStyle: 'hidden', titleBarOverlay: { color: '#11141B', symbolColor: '#A3AAB7', height: 40 },
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, nodeIntegration: false },
   });
