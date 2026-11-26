@@ -12,7 +12,8 @@ const CITE = /\s*\[(.+?\.\w+ p\d+(?:; .+?\.\w+ p\d+)*)\]\s*$/;
 function parseAnswer(text) {
   const sections = [];
   let cur = null;
-  for (const raw of String(text || '').split('\n')) {
+  // Control characters copied from source PDFs (e.g. \u0007 before a list item) carry no text.
+  for (const raw of String(text || '').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '').split('\n')) {
     const line = raw.trim();
     if (!line) continue;
     if (line.startsWith('## ')) { cur = { heading: line.slice(3).trim(), lines: [] }; sections.push(cur); continue; }

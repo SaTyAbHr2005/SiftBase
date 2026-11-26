@@ -49,6 +49,11 @@ test('a file name with brackets still gives its citation', () => {
   assert.deepEqual(r.answer[0].lines[0], { text: 'Fees rose 4%.', cites: [{ doc: 'Report [final].pdf', page: 3 }] });
 });
 
+test('control characters from the source are dropped', () => {
+  const r = toRun({ answer: '- 2) \u0007Use of harvested rainwater. [a.pdf p9]', trace: [] }, 'q', {});
+  assert.equal(r.answer[0].lines[0].text, '2) Use of harvested rainwater.');
+});
+
 test('an answer with no heading still gets one section', () => {
   const r = toRun({ answer: 'Nothing found in these documents.', trace: [] }, 'q', {});
   assert.deepEqual(r.answer, [{ heading: 'Answer', lines: [{ text: 'Nothing found in these documents.', cites: [] }] }]);
