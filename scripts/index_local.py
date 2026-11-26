@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 def main() -> None:
     from kb.config import get_settings
     from kb.embed import get_embedder
+    from kb.ingest.convert import SUPPORTED
     from kb.ingest.pipeline import index_collection
     from kb.ingest.progress import ProgressBar
     from kb.llm import get_llm
@@ -38,9 +39,9 @@ def main() -> None:
         if src.is_dir():
             zip_path = Path(tmp) / "src.zip"
             with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as z:
-                for pdf in sorted(src.rglob("*")):
-                    if pdf.is_file() and pdf.suffix.lower() == ".pdf":
-                        z.write(pdf, pdf.relative_to(src).as_posix())
+                for f in sorted(src.rglob("*")):
+                    if f.is_file() and f.suffix.lower() in SUPPORTED:
+                        z.write(f, f.relative_to(src).as_posix())
         else:
             zip_path = src
         bar = ProgressBar()
