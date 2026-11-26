@@ -7,10 +7,15 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { toRun } = require('./lib/run');
 
-const ROOT = path.resolve(__dirname, '..'); // the SiftBase repo: kb/, scripts/, .env
+// Installed: resources/backend holds python/, site-packages/, app/ (kb, scripts) and models/ (scripts/build_backend.py).
+// From the repo: the repo itself, with the Python on PATH.
+const BACKEND = app.isPackaged ? path.join(process.resourcesPath, 'backend') : null;
+const ROOT = BACKEND ? path.join(BACKEND, 'app') : path.resolve(__dirname, '..');
 // The env file the API loads, as kb/config.py reads it: KB_ENV_FILE, else the repo's .env.
 const ENV_FILE = process.env.KB_ENV_FILE || path.join(ROOT, '.env');
-const PYTHON = process.env.SIFTBASE_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
+const PYTHON = process.env.SIFTBASE_PYTHON || (BACKEND ? path.join(BACKEND, 'python', 'python.exe') : process.platform === 'win32' ? 'python' : 'python3');
+// Installed, the data lives in the user's app folder (the install folder may be read-only); from the repo, in data/.
+const dataDir = () => settings().dataDir || (BACKEND ? path.join(USER(), 'data') : path.join(ROOT, 'data'));
 const USER = () => app.getPath('userData');
 const file = (name) => path.join(USER(), name);
 const COLLECTION_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
@@ -146,7 +151,8 @@ function childEnv() {
   const env = { ...process.env, ...modelEnv(), PYTHONIOENCODING: 'utf-8', PYTHONUNBUFFERED: '1', KB_DESKTOP: '1',
     // This PC's own API: the provider quota is the only limit that matters.
     KB_QUERY_PER_HOUR: '0', KB_QUERIES_PER_DAY: '0', KB_INDEX_PER_DAY: '0' };
-  if (settings().dataDir) env.KB_DATA_DIR = settings().dataDir;
+  if (settings().dataDir || BACKEND) env.KB_DATA_DIR = dataDir();
+  if (BACKEND) Object.assign(env, { FASTEMBED_CACHE_PATH: path.join(BACKEND, 'models'), PYTHONNOUSERSITE: '1', HF_HUB_OFFLINE: '1' });
   return env;
 }
 function setApi(state, error = '') { api.state = state; api.error = error; send('api', { state, error }); }
@@ -286,7 +292,7 @@ const handle = (ch, fn) => ipcMain.handle(ch, (e, arg) => {
   if (!win || e.sender !== win.webContents) throw new Error('Unknown sender');
   return fn(arg || {});
 });
-handle('status', () => ({ api: { state: api.state, error: api.error }, keys: keysForPage(), dataDir: settings().dataDir || path.join(ROOT, 'data'), indexing: indexing && indexing.collection }));
+handle('status', () => ({ api: { state: api.state, error: api.error }, keys: keysForPage(), dataDir: dataDir(), indexing: indexing && indexing.collection }));
 handle('collections', collections);
 handle('query', query);
 handle('history', () => readJson('history.json', []));
@@ -309,7 +315,7 @@ handle('data:pick', async () => {
   startApi().catch((e) => setApi('failed', e.message));
   return r.filePaths[0];
 });
-handle('open:data', () => shell.openPath(settings().dataDir || path.join(ROOT, 'data')));
+handle('open:data', () => { fs.mkdirSync(dataDir(), { recursive: true }); return shell.openPath(dataDir()); });
 
 app.whenReady().then(() => { createWindow(); startApi().catch((e) => setApi('failed', e.message)); });
 app.on('window-all-closed', () => app.quit());
