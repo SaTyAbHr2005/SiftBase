@@ -1,6 +1,7 @@
 """FastAPI app. Routes live in kb/routes/index.py (Track A) and kb/routes/query.py (Track B)."""
 import importlib
 import logging
+import os
 import uuid
 
 from fastapi import FastAPI, Request
@@ -51,5 +52,6 @@ async def _unexpected(request: Request, exc: Exception):
     return JSONResponse(status_code=500, content=err.to_body(new_request_id()))
 
 
-for _module in ("kb.routes.index", "kb.routes.query"):
+# The desktop app also lists collections; the hosted API keeps exactly its two routes.
+for _module in ("kb.routes.index", "kb.routes.query") + (("kb.routes.collections",) if os.environ.get("KB_DESKTOP") == "1" else ()):
     app.include_router(importlib.import_module(_module).router)
