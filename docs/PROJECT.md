@@ -1,6 +1,6 @@
 # SiftBase project guide
 
-Last updated 2026-11-05.
+Last updated 2026-11-27.
 
 ## What it is
 
@@ -19,13 +19,14 @@ The API has two routes:
 | Query pipeline | Working on free models only |
 | Model providers | Free-tier chain; private mode keeps documents with Cloudflare and Groq |
 | Access | API keys, per-key and shared daily rate limits, `AT_CAPACITY` when the free answer model is used up |
-| Tests | 430 passed, 1 skipped, 7 slow deselected; run on every push by GitHub Actions |
+| Desktop app | Electron app in `desktop/` and a standalone Windows installer. Not code-signed, not yet tried on a clean PC |
+| Tests | 444 passed, 1 skipped, 7 slow deselected; run on every push by GitHub Actions. The desktop app has 4 more (`npm test`) |
 | Accuracy target (80% answer precision and 70% answer recall on the 8-question set) | **Not met** (below) |
-| Latency target (30 s) | **Not met** by the default writer: median 34-40 s. The opt-in pick writer's two runs had medians of 14 s and 20 s, at lower precision |
+| Latency target (30 s) | **Not met** by the default writer: median 34-40 s on qwen3-30b, 49 s and 72 s on gemma-4. The opt-in pick writer's two runs had medians of 14 s and 20 s, at lower precision |
 
 ## Measured results
 
-All runs use the same 8 development questions (B30, C17, C18, C26, C31, C32, A20, A21), all 35 training documents and the unmodified official evaluator. Every score comes from the same judge, Groq `openai/gpt-oss-120b`. Answers come almost entirely from Cloudflare's `@cf/qwen/qwen3-30b-a3b-fp8`.
+All runs use the same 8 development questions (B30, C17, C18, C26, C31, C32, A20, A21), all 35 training documents and the unmodified official evaluator. Every score comes from the same judge, Groq `openai/gpt-oss-120b`. Answers come almost entirely from Cloudflare: `@cf/qwen/qwen3-30b-a3b-fp8` until Cloudflare retired it on 2026-11-20, then `@cf/google/gemma-4-26b-a4b-it`. The `run_gemma` runs also use a fresh index (`acd59ee`, `afd30e2`) that stores numbers such as "60,000" as written.
 
 | Run | Code | Answer P / R | Context P / R | Median / slowest query |
 |---|---|---|---|---|
@@ -39,6 +40,8 @@ All runs use the same 8 development questions (B30, C17, C18, C26, C31, C32, A20
 | `run_figures_b`, 2026-11-08 | `8e38a2e` | 61.3% / 31.2% | 49.6% / 67.0% | 34 s / 41 s |
 | `run_pick_a`, 2026-11-10 | pick writer, before its heading fix | 49.3% / 35.1% | 50.3% / 69.4% | 14 s / 33 s |
 | `run_pick_b`, 2026-11-10 | pick writer, before its heading fix | 44.6% / 33.4% | 51.9% / 69.2% | 20 s / 28 s |
+| `run_gemma_a`, 2026-11-24 | `7b98378`, gemma-4 | 62.6% / 27.1% | 56.6% / 41.3% | 49 s / 99 s |
+| `run_gemma_b`, 2026-11-25 | `08b639d`, gemma-4 | 68.9% / 22.9% | 77.9% / 60.6% | 72 s / 139 s |
 
 A single run is not a measurement. `run_fix4` and `run_wait8b` used the same retrieval and writing code with no provider failures, yet their answer precision differs by 26 points. The planner, the source check and the writer all give different outputs from run to run. The judge is deterministic on identical answers but literal, so a reworded statement can turn a matched point into an extra one. Compare the mean of at least 2-3 runs per version, and say how many runs a number comes from.
 
@@ -47,6 +50,8 @@ The five runs from 2026-11-02 to 2026-11-07 average 51.9% answer precision (rang
 `8e38a2e` keeps findings in the source's own words. When a statement drops every figure in the passages it cites, or copies a phrase from the question that those passages do not contain, the writer replaces it with the closest cited sentence. Its two runs average 63.7% answer precision and 31.3% answer recall, and each beats every earlier run except `run_fix4`. Two runs are still a small sample. In `run_figures_b` the claim check rejected five of C26's six statements, so C26 scored zero.
 
 `8d95cf4` adds an opt-in pick writer (`KB_ANALYTICAL_WRITER=pick`). The model only chooses which source sentences answer each task, and the answer quotes them word for word, so no wording check is needed. Its two runs had the highest answer recall so far (mean 34.2%) and the fastest queries (median 14 s and 20 s), but precision fell to a mean of 46.9%. On B30 every point was marked extra because each section heading repeated the planner's task sentence, which states a premise the source does not confirm. The committed version uses the question's own short phrases as headings, or none. Rebuilding both runs' answers from the same picked sentences with the new headings, with no new model calls, raised B30 from 0.00 to 0.86 precision and the two-run mean to 52.1% precision and 34.0% recall. That is still 11.6 points below the default writer on precision, so the default writer is unchanged. A21 scored zero in both pick runs because the picked sentences were auditor boilerplate.
+
+The two gemma-4 runs average 65.8% answer precision and 25.0% answer recall. Precision is close to the qwen3-30b `8e38a2e` runs, and recall is lower. In `run_gemma_a` the verifier kept far fewer passages than qwen3-30b had, so broad questions stopped after the first verification wave. `3dc176a` gives verification more time and judges later waves against the first wave's keep rate. `run_gemma_b` measured that change together with `030d80b`, which drops headings that copy a long task sentence. Context precision rose to 77.9%, but C31 scored zero because the claim check rejected both correct statements, and two verification calls on C26 and C32 ran out of time. Three later fixes are not measured yet: verification gets 60 s (`9f5c9e7`), planner guesses such as invented figures no longer become search topics (`5eb8b76`), and the verifier judges each passage on its own instead of against the rest of its batch (`6794d7f`). Replaying the saved verification batches with the new prompt kept 50 of the 99 benchmark source passages in them, up from 45.
 
 Context scores cover a subset of the passages. Since `452ede5` the runner submits the passages cited in the answer first and stops at what one judge call can score, so `run_wait8b`'s context scores cover the first 44-54 of 45-58 passages on four questions. Each row records `submitted_chunks` and `total_chunks`.
 
@@ -86,11 +91,11 @@ Free tiers only. `kb/model_api.py` holds the list, and every provider takes the 
 
 | Use | Default order | With `KB_PRIVATE` on (the default) |
 |---|---|---|
-| Planning, verification | Cloudflare qwen3-30b, Groq gpt-oss-20b, OpenRouter, Mistral, Gemini | Cloudflare, then Groq |
-| Writing and claim checks | Cloudflare qwen3-30b, Groq qwen3.8-27b, OpenRouter, Mistral, Gemini, Groq gpt-oss-20b | Cloudflare, then Groq |
+| Planning, verification | Cloudflare gemma-4-26b, Groq gpt-oss-20b, OpenRouter, Mistral, Gemini | Cloudflare, then Groq |
+| Writing and claim checks | Cloudflare gemma-4-26b, Groq qwen3.8-27b, OpenRouter, Mistral, Gemini, Groq gpt-oss-20b | Cloudflare, then Groq |
 | Judge (scoring only) | Groq gpt-oss-120b, never switched | same |
 
-In practice only Cloudflare's qwen3-30b can write answers. Writer prompts are 20k-50k tokens, Groq allows 7,500 tokens per call, and the other free fallbacks failed on writer and verification calls when tried.
+Cloudflare retired qwen3-30b on 2026-11-20. Its replacement, gemma-4-26b, needs thinking turned off (`enable_thinking: false`); with thinking on, it spent its whole output limit reasoning and returned no answer. In practice only the Cloudflare model can write answers. Writer prompts are 20k-50k tokens, Groq allows 7,500 tokens per call, and the other free fallbacks failed on writer and verification calls when tried.
 
 `ChainLLM` in `kb/llm.py` tries the providers in order for each call. It moves on after a rate limit, server error, timeout, bad key, rejected request or invalid reply, and then skips the provider for a while:
 
@@ -128,7 +133,7 @@ Verification: 8 batches run first, then 4 at a time, up to 16. Another wave runs
 
 | Path | Purpose |
 |---|---|
-| `kb/api.py`, `kb/routes/` | FastAPI app and the two routes |
+| `kb/api.py`, `kb/routes/` | FastAPI app and the two routes. `kb/routes/collections.py` adds a read-only collection list, only when the desktop app starts the server (`KB_DESKTOP=1`) |
 | `kb/access.py` | API keys and rate limits for every route |
 | `kb/config.py` | Environment settings. `kb/query/settings.py` adds query defaults, and shared values override them |
 | `kb/model_api.py`, `kb/llm.py` | Provider list, private mode, wire format, fallback chain, spend ledger and response cache |
@@ -140,6 +145,7 @@ Verification: 8 batches run first, then 4 at a time, up to 16. Another wave runs
 | `evaluation/`, `scripts/` | Benchmark runner, official evaluator loader, indexing, serving and smoke-test tools |
 | `tests/` | Offline tests. Slow tests download real models |
 | `.github/workflows/tests.yml` | Runs the offline tests on every push and pull request |
+| `desktop/` | Electron app: starts the API on 127.0.0.1, stores keys encrypted, indexes folders, keeps a question history. `desktop/scripts/build_backend.py` bundles Python, packages and models for the installer |
 
 [METADATA_RETRIEVAL.md](METADATA_RETRIEVAL.md) covers document navigation, and [TASK_WORKSHEET.md](TASK_WORKSHEET.md) covers the current writer.
 
@@ -156,10 +162,11 @@ Verification: 8 batches run first, then 4 at a time, up to 16. Another wave runs
 
 ## Next steps
 
-1. Run the default writer a third time to firm up its two-run mean, and look at why the claim check rejected most of C26's statements in `run_figures_b`.
+1. Measure `9f5c9e7`, `5eb8b76` and `6794d7f` in a full run and compare it with the two gemma-4 runs. Then look at the claim check, which rejected correct statements on C31 in `run_gemma_b` and on C26 in `run_figures_b`.
 2. Close the pick writer's gaps before measuring it again: on A21 it picks auditor boilerplate and scores zero, and table rows come out as raw cells with their header attached. It has the best recall and the fastest queries so far, so it is worth a fix and two fresh runs.
 3. Fix the weakest cases. C32 keeps none of the ~64 passages it checks in every run, and in one run the claim check rejected every statement on C31 and C32.
 4. Raise recall with answers that combine facts across passages, measured on questions not used for tuning.
 5. Deploy: the API on Render, then the site on Vercel with `SIFTBASE_API_URL` and `SIFTBASE_API_KEY` set. The site calls the API through its own server-side route, so the API needs no CORS.
 6. Keep rate-limit counts in Atlas so a restart does not reset them.
-7. Remove unused code: duplicate types in `kb/models.py`, `write_answer`, `StepTrace` and `kb/query/demo_app.py`. The ledger writer (`kb/query/ledger.py`) is optional and measured worse.
+7. Desktop app: try the installer on a clean Windows PC, and show live query progress, which needs a stage hook in `kb/query`.
+8. Remove unused code: duplicate types in `kb/models.py`, `write_answer`, `StepTrace` and `kb/query/demo_app.py`. The ledger writer (`kb/query/ledger.py`) is optional and measured worse.
